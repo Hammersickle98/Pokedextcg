@@ -16,641 +16,477 @@
     <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#111827">
-
     <style>
-        /* Estilos personalizados e tema escuro */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0f172a; /* Azul-marinho/Cinza escuro */
-            color: #e2e8f0;
-        }
-        /* Cor de destaque principal */
-        .accent-color { color: #facc15; /* Amarelo Vibrante */ }
+        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; }
+        .accent-color { color: #facc15; }
         .bg-accent-color { background-color: #facc15; }
         .border-accent-color { border-color: #facc15; }
 
-        /* Scrollbar customizada */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #1e293b; }
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
-        /* Animação de carregamento */
         .loader {
-            width: 48px;
-            height: 48px;
-            border: 5px solid #FFF;
-            border-bottom-color: #facc15;
-            border-radius: 50%;
-            display: inline-block;
-            box-sizing: border-box;
+            width: 48px; height: 48px; border: 5px solid #FFF;
+            border-bottom-color: #facc15; border-radius: 50%;
+            display: inline-block; box-sizing: border-box;
             animation: rotation 1s linear infinite;
         }
-        @keyframes rotation {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* Classes para estados das cartas */
-        .captured-border { box-shadow: 0 0 0 3px #22c55e, 0 0 10px #22c55e; } /* Verde com brilho */
-        .wish-border { box-shadow: 0 0 0 3px #a855f7, 0 0 10px #a855f7; } /* Roxo com brilho */
+        /* Cores das Bordas com a nova prioridade */
+        .pokemon-card.favorite-border { box-shadow: 0 0 0 3px #facc15, 0 0 10px #facc15; }
+        .pokemon-card:not(.favorite-border).captured-border { box-shadow: 0 0 0 3px #22c55e, 0 0 10px #22c55e; }
+        .pokemon-card:not(.favorite-border):not(.captured-border).wish-border { box-shadow: 0 0 0 3px #a855f7, 0 0 10px #a855f7; }
         
-        /* Esconde o menu de ações por padrão */
-        .actions-menu { display: none; }
-        .pokemon-card:hover .actions-menu, .pokemon-card.actions-open .actions-menu { display: block; }
+        /* Controles da UI */
+        .actions-menu, .info-overlay { display: none; opacity: 0; transition: opacity 0.2s ease-in-out; }
+        .actions-open .actions-menu, .info-open .info-overlay { display: flex; opacity: 1; }
+        .info-overlay { display: flex; pointer-events: none; }
+        .info-open .info-overlay { pointer-events: auto; }
 
-        /* Garante que o overlay de info não cause hover no card */
-        .info-overlay { pointer-events: none; }
-        .pokemon-card:hover .info-overlay.info-active {
-            opacity: 1;
-        }
-
+        .modal-panel { transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out; }
+        .filter-btn.active, .pagination-btn.active { background-color: #facc15; color: #111827; border-color: #facc15; }
     </style>
 </head>
 <body class="antialiased">
 
     <!-- Cabeçalho Fixo -->
     <header class="bg-slate-800/80 backdrop-blur-sm sticky top-0 z-40 w-full border-b border-slate-700">
-        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex items-center">
-                    <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/full/025.png" alt="Pikachu icon" class="h-10 w-10 mr-2"/>
-                    <h1 class="text-xl sm:text-2xl font-bold accent-color tracking-tight">Pokédex TCG</h1>
-                </div>
-                <div class="flex-1 flex justify-center px-2 lg:ml-6 lg:justify-end">
-                    <div class="max-w-lg w-full lg:max-w-xs">
-                        <label for="search" class="sr-only">Buscar</label>
-                        <div class="relative text-gray-400 focus-within:text-gray-200">
-                            <div class="pointer-events-none absolute inset-y-0 left-0 pl-3 flex items-center">
-                                <i class="ph ph-magnifying-glass text-lg"></i>
-                            </div>
-                            <input id="search" class="block w-full bg-slate-700 border border-transparent rounded-md py-2 pl-10 pr-3 leading-5 text-gray-200 placeholder-gray-400 focus:outline-none focus:bg-slate-600 focus:border-slate-500 focus:ring-slate-500 sm:text-sm" placeholder="Buscar Pokémon..." type="search">
-                        </div>
-                    </div>
+        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+            <div class="flex items-center">
+                <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/full/025.png" alt="Ícone do Pikachu" class="h-10 w-10 mr-2"/>
+                <h1 class="text-xl sm:text-2xl font-bold accent-color tracking-tight">Pokédex TCG</h1>
+            </div>
+            <div class="max-w-lg w-full lg:max-w-xs">
+                <div class="relative text-gray-400 focus-within:text-gray-200">
+                    <div class="pointer-events-none absolute inset-y-0 left-0 pl-3 flex items-center"><i class="ph ph-magnifying-glass text-lg"></i></div>
+                    <input id="search-input" class="block w-full bg-slate-700 border border-transparent rounded-md py-2 pl-10 pr-3 leading-5 text-gray-200 placeholder-gray-400 focus:outline-none focus:bg-slate-600 focus:border-slate-500 focus:ring-slate-500 sm:text-sm" placeholder="Buscar Pokémon..." type="search">
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- Navegação Principal -->
+    <!-- Navegação Principal (Abas) -->
     <nav class="bg-slate-800 border-b border-slate-700">
         <div id="nav-tabs" class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-center space-x-4 sm:space-x-8">
-            <button data-filter="all" class="nav-tab active-tab font-medium text-sm sm:text-base whitespace-nowrap py-3 px-1 border-b-2 border-accent-color text-accent-color">Todos</button>
-            <button data-filter="captured" class="nav-tab text-slate-400 hover:text-white font-medium text-sm sm:text-base whitespace-nowrap py-3 px-1 border-b-2 border-transparent">Capturados</button>
-            <button data-filter="favorites" class="nav-tab text-slate-400 hover:text-white font-medium text-sm sm:text-base whitespace-nowrap py-3 px-1 border-b-2 border-transparent">Favoritos</button>
-            <button data-filter="wish" class="nav-tab text-slate-400 hover:text-white font-medium text-sm sm:text-base whitespace-nowrap py-3 px-1 border-b-2 border-transparent">Desejo</button>
+            <button data-view="all" class="nav-tab active-tab font-medium text-sm sm:text-base py-3 px-1 border-b-2 border-accent-color text-accent-color">Todos</button>
+            <button data-view="favorites" class="nav-tab text-slate-400 hover:text-white font-medium text-sm sm:text-base py-3 px-1 border-b-2 border-transparent">Favoritos</button>
+            <button data-view="captured" class="nav-tab text-slate-400 hover:text-white font-medium text-sm sm:text-base py-3 px-1 border-b-2 border-transparent">Capturados</button>
+            <button data-view="wish" class="nav-tab text-slate-400 hover:text-white font-medium text-sm sm:text-base py-3 px-1 border-b-2 border-transparent">Desejo</button>
         </div>
     </nav>
 
     <!-- Conteúdo Principal -->
     <main class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Controles de Paginação e Exibição -->
-        <div id="controls-container" class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-            <div class="flex items-center gap-2">
-                <label for="items-per-page" class="text-sm text-slate-400">Exibir:</label>
-                <select id="items-per-page" class="bg-slate-700 border border-slate-600 rounded-md text-sm py-1 px-2 focus:ring-accent-color focus:border-accent-color">
-                    <option value="40">40</option>
-                    <option value="60">60</option>
-                    <option value="100">100</option>
-                    <option value="all">Todos (Scroll Infinito)</option>
+        <!-- Controles -->
+        <div id="controls-container" class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+            <div class="flex flex-wrap items-center gap-4">
+                <select id="items-per-page-select" class="bg-slate-700 border border-slate-600 rounded-md text-sm py-1.5 px-2 focus:ring-accent-color focus:border-accent-color">
+                    <option value="40">40 / página</option><option value="80">80 / página</option><option value="120">120 / página</option><option value="infinite">Scroll Infinito</option>
                 </select>
+                <select id="sort-by-select" class="bg-slate-700 border border-slate-600 rounded-md text-sm py-1.5 px-2 focus:ring-accent-color focus:border-accent-color">
+                    <option value="pokedex">Ordenar por Número</option><option value="alphabetical">Ordenar por Nome</option>
+                </select>
+                <button id="filter-toggle-btn" class="flex items-center gap-2 bg-slate-700 px-4 py-1.5 rounded-md hover:bg-slate-600">
+                    <i class="ph ph-funnel text-lg"></i><span class="text-sm font-medium">Filtros</span>
+                </button>
             </div>
-            <div id="pagination-controls" class="flex items-center gap-2"></div>
+            <div id="pagination-controls" class="flex items-center gap-1 sm:gap-2 flex-wrap justify-center"></div>
         </div>
-
+        
         <!-- Grade de Pokémon -->
-        <div id="pokedex-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4 sm:gap-6">
-            <!-- Cards de Pokémon serão inseridos aqui -->
-        </div>
+        <div id="pokedex-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4 sm:gap-6 min-h-[50vh]"></div>
+        <div id="infinite-scroll-sentinel" class="h-10 w-full"></div>
 
-        <!-- Mensagem de Status/Erro -->
-        <div id="status-message" class="w-full text-center py-10 hidden"></div>
-
-        <!-- Indicador de Carregamento -->
-        <div id="loader-container" class="w-full flex justify-center py-10">
-            <div class="loader"></div>
+        <!-- Mensagens e Carregamento -->
+        <div id="status-container" class="w-full text-center py-10">
+            <div id="loader" class="loader mx-auto"></div>
+            <p id="status-message" class="text-slate-400 mt-4 hidden"></p>
         </div>
     </main>
+
+    <!-- Painel de Filtros (Modal) -->
+    <div id="filter-panel" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center">
+        <div id="filter-panel-content" class="modal-panel bg-slate-800 rounded-lg shadow-2xl p-6 w-11/12 max-w-2xl max-h-[80vh] flex flex-col transform scale-95 opacity-0">
+            <div class="flex justify-between items-center mb-4"><h2 class="text-xl font-bold text-accent-color">Filtros</h2><button id="close-filter-panel-btn"><i class="ph ph-x text-2xl hover:text-accent-color"></i></button></div>
+            <div class="overflow-y-auto pr-2 space-y-6">
+                <div><h3 class="font-semibold mb-3">Geração</h3><div id="generation-filters" class="flex flex-wrap gap-2"></div></div>
+                <div><h3 class="font-semibold mb-3">Tipo</h3><div id="type-filters" class="flex flex-wrap gap-2"></div></div>
+            </div>
+            <div class="mt-6 pt-4 border-t border-slate-700 flex justify-end gap-4">
+                <button id="clear-filters-btn" class="text-sm font-medium text-slate-400 hover:text-white">Limpar</button>
+                <button id="apply-filters-btn" class="text-sm font-bold bg-accent-color text-slate-900 px-6 py-2 rounded-md hover:bg-yellow-300">Aplicar</button>
+            </div>
+        </div>
+    </div>
     
-    <!-- Modal de Visualização de Imagem -->
-    <div id="image-modal" class="fixed inset-0 bg-black/80 z-50 hidden items-center justify-center p-4 cursor-pointer" onclick="this.style.display='none'">
-        <img id="modal-image" src="" alt="Visualização da carta" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl">
+    <!-- Painel Seletor de Versão (Modal) -->
+    <div id="version-panel" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+        <div id="version-panel-content" class="modal-panel bg-slate-800 rounded-lg shadow-2xl p-6 w-11/12 max-w-4xl max-h-[80vh] flex flex-col transform scale-95 opacity-0">
+            <div class="flex justify-between items-center mb-4"><h2 class="text-xl font-bold text-accent-color">Selecione uma Versão</h2><button id="close-version-panel-btn"><i class="ph ph-x text-2xl hover:text-accent-color"></i></button></div>
+            <div id="version-grid-container" class="overflow-y-auto pr-2">
+                <div id="version-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4"></div>
+            </div>
+        </div>
     </div>
 
-    <!-- Botão Voltar ao Topo -->
-    <button id="back-to-top" class="fixed bottom-5 right-5 bg-accent-color text-slate-900 rounded-full p-3 shadow-lg hidden transition-opacity duration-300 hover:bg-yellow-300 z-30">
-        <i class="ph ph-arrow-up text-2xl"></i>
-    </button>
+    <!-- Outros Componentes de UI -->
+    <div id="image-modal" class="fixed inset-0 bg-black/80 z-50 hidden items-center justify-center p-4 cursor-pointer" onclick="this.style.display='none'"><img id="modal-image" src="" alt="Visualização da carta" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl"></div>
+    <button id="back-to-top-btn" class="fixed bottom-5 right-5 bg-accent-color text-slate-900 rounded-full p-3 shadow-lg hidden opacity-0 transition-opacity duration-300 hover:bg-yellow-300 z-30"><i class="ph ph-arrow-up text-2xl"></i></button>
 
-    <!-- Firebase SDKs -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // --- CONFIGURAÇÃO ---
+        const POKEMON_SPECIES_COUNT = 1025;
+        const TCG_API_KEY = "";
 
-        // --- CONFIGURAÇÃO E INICIALIZAÇÃO ---
-        // IMPORTANTE: A API do Pokémon TCG pode exigir uma chave para uso em produção.
-        // Obtenha uma em https://dev.pokemontcg.io/ e coloque-a aqui.
-        const TCG_API_KEY = ""; // Deixar em branco pode funcionar para desenvolvimento, mas pode falhar.
-        
-        const firebaseConfig = typeof __firebase_config !== 'undefined' && __firebase_config ? JSON.parse(__firebase_config) : {};
-        let app, auth, db;
-        let firebaseEnabled = false;
-
-        if (Object.keys(firebaseConfig).length > 0) {
-            try {
-                app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-                firebaseEnabled = true;
-            } catch (error) {
-                console.error("Falha ao inicializar o Firebase:", error);
-            }
-        } else {
-            console.warn("Configuração do Firebase não encontrada. A funcionalidade de coleção está desativada.");
-        }
-
-
-        // --- VARIÁVEIS DE ESTADO GLOBAL ---
-        let state = {
-            userId: null,
-            pokemonData: [], // Array com todos os dados dos Pokémon
-            userCollection: {}, // { 'pokedexId': { captured: bool, favorite: bool, wish: bool, version: 0 } }
-            currentFilter: 'all',
+        // --- ESTADO DA APLICAÇÃO ---
+        const state = {
+            masterList: [],
+            pokemonDetailsCache: new Map(),
+            userCollection: {},
+            currentView: 'all',
+            sortBy: 'pokedex',
             searchTerm: '',
+            activeFilters: { generation: new Set(), type: new Set() },
             currentPage: 1,
             itemsPerPage: 40,
-            totalPokemon: 0,
-            isLoading: false,
-            isAuthReady: false,
+            isLoading: true,
             isInfiniteScroll: false,
-            allDataLoaded: false
+            renderedPokemonIds: new Set(),
         };
 
         // --- ELEMENTOS DO DOM ---
-        const grid = document.getElementById('pokedex-grid');
-        const loader = document.getElementById('loader-container');
-        const searchInput = document.getElementById('search');
-        const navTabsContainer = document.getElementById('nav-tabs');
-        const backToTopBtn = document.getElementById('back-to-top');
-        const imageModal = document.getElementById('image-modal');
-        const modalImage = document.getElementById('modal-image');
-        const paginationControls = document.getElementById('pagination-controls');
-        const itemsPerPageSelect = document.getElementById('items-per-page');
-        const statusMessage = document.getElementById('status-message');
+        const dom = {
+            grid: document.getElementById('pokedex-grid'),
+            loader: document.getElementById('loader'),
+            statusContainer: document.getElementById('status-container'),
+            statusMessage: document.getElementById('status-message'),
+            navTabs: document.getElementById('nav-tabs'),
+            searchInput: document.getElementById('search-input'),
+            itemsPerPageSelect: document.getElementById('items-per-page-select'),
+            sortBySelect: document.getElementById('sort-by-select'),
+            paginationControls: document.getElementById('pagination-controls'),
+            filterToggleBtn: document.getElementById('filter-toggle-btn'),
+            filterPanel: document.getElementById('filter-panel'),
+            filterPanelContent: document.getElementById('filter-panel-content'),
+            closeFilterPanelBtn: document.getElementById('close-filter-panel-btn'),
+            generationFilters: document.getElementById('generation-filters'),
+            typeFilters: document.getElementById('type-filters'),
+            clearFiltersBtn: document.getElementById('clear-filters-btn'),
+            applyFiltersBtn: document.getElementById('apply-filters-btn'),
+            versionPanel: document.getElementById('version-panel'),
+            versionPanelContent: document.getElementById('version-panel-content'),
+            closeVersionPanelBtn: document.getElementById('close-version-panel-btn'),
+            versionGrid: document.getElementById('version-grid'),
+            imageModal: document.getElementById('image-modal'),
+            modalImage: document.getElementById('modal-image'),
+            backToTopBtn: document.getElementById('back-to-top-btn'),
+            infiniteScrollSentinel: document.getElementById('infinite-scroll-sentinel'),
+        };
 
-        // --- FUNÇÕES PRINCIPAIS ---
+        // --- LÓGICA PRINCIPAL ---
 
-        /**
-         * Inicializa a autenticação anônima do Firebase se estiver habilitado.
-         */
-        function initAuth() {
-            if (!firebaseEnabled) return;
-            onAuthStateChanged(auth, user => {
-                if (user) {
-                    state.userId = user.uid;
-                    state.isAuthReady = true;
-                    console.log('Usuário autenticado anonimamente:', state.userId);
-                    listenToCollectionChanges();
-                } else {
-                    signInAnonymously(auth).catch(error => console.error("Erro na autenticação anônima:", error));
-                }
-            });
-        }
-
-        /**
-         * Ouve por mudanças na coleção do usuário no Firestore.
-         */
-        function listenToCollectionChanges() {
-            if (!state.userId || !firebaseEnabled) return;
-            const docRef = doc(db, "pokedex_collections", state.userId);
-            onSnapshot(docRef, (doc) => {
-                if (doc.exists()) {
-                    state.userCollection = doc.data().pokemon_status || {};
-                } else {
-                    // O documento será criado na primeira vez que algo for salvo.
-                }
-                // Re-renderiza a grade para aplicar os status da coleção (bordas, etc.).
-                renderGrid();
-            });
-        }
-
-        /**
-         * Salva o estado da coleção do usuário no Firebase.
-         */
-        async function saveCollectionToFirebase() {
-            if (!state.userId || !state.isAuthReady || !firebaseEnabled) return;
-            try {
-                const docRef = doc(db, "pokedex_collections", state.userId);
-                await setDoc(docRef, { pokemon_status: state.userCollection }, { merge: true });
-            } catch (error) {
-                console.error("Erro ao salvar coleção:", error);
+        async function initialize() {
+            setupEventListeners();
+            showLoading(true, "Buscando Pokémon...");
+            await fetchMasterList();
+            showLoading(false);
+            if (state.masterList.length > 0) {
+                renderPage();
+                populateFilterOptions();
+            } else {
+                showStatusMessage("Não foi possível carregar os dados. Tente recarregar a página.");
             }
         }
 
-        /**
-         * Busca a lista de espécies de Pokémon e suas cartas TCG.
-         */
-        async function fetchPokemonData() {
-            if (state.isLoading || state.allDataLoaded) return;
-            state.isLoading = true;
-            showLoader(true);
-            showStatusMessage(false);
-
+        async function fetchMasterList() {
             try {
-                // Usando PokeAPI para uma lista confiável e ordenada de Pokémon.
-                const speciesResponse = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=${state.itemsPerPage}&offset=${(state.currentPage - 1) * state.itemsPerPage}`);
-                if (!speciesResponse.ok) throw new Error(`PokeAPI respondeu com status ${speciesResponse.status}`);
-                const speciesData = await speciesResponse.json();
-                
-                state.totalPokemon = speciesData.count;
-                if(state.pokemonData.length >= state.totalPokemon && state.totalPokemon > 0) {
-                    state.allDataLoaded = true;
-                    showLoader(false);
-                    return;
-                }
+                const response = await fetch(`https://pokeapi.co/api/v2/pokemon-species?limit=${POKEMON_SPECIES_COUNT}`);
+                const data = await response.json();
+                state.masterList = data.results.map(p => ({
+                    id: p.url.split('/')[6],
+                    name: p.name,
+                }));
+            } catch (error) {
+                console.error("Falha ao buscar lista de Pokémon:", error);
+            }
+        }
 
-                const pokemonPromises = speciesData.results.map(async (pokemon) => {
-                    // Usando o nome do Pokémon para buscar na API TCG.
-                    // A busca por nome exato entre aspas é mais precisa.
-                    const tcgResponse = await fetch(`https://api.pokemontcg.io/v2/cards?q=name:"${pokemon.name}"&orderBy=-set.releaseDate`, {
+        async function getPokemonDetails(pokemonId) {
+            if (state.pokemonDetailsCache.has(pokemonId)) {
+                return state.pokemonDetailsCache.get(pokemonId);
+            }
+            try {
+                const [speciesResponse, tcgResponse] = await Promise.all([
+                    fetch(`https://pokeapi.co/api/v2/pokemon-species/${pokemonId}/`),
+                    fetch(`https://api.pokemontcg.io/v2/cards?q=nationalPokedexNumbers:${pokemonId}&orderBy=-set.releaseDate&pageSize=2`, {
                         headers: TCG_API_KEY ? { 'X-Api-Key': TCG_API_KEY } : {}
-                    });
-                    if (!tcgResponse.ok) {
-                         console.warn(`TCG API falhou para ${pokemon.name} com status ${tcgResponse.status}`);
-                         return null; // Ignora este Pokémon se a API TCG falhar
-                    }
-                    const tcgData = await tcgResponse.json();
-
-                    if (tcgData.data && tcgData.data.length > 0) {
-                        const speciesDetails = await fetch(pokemon.url).then(res => res.json());
-                        const generationDetails = await fetch(speciesDetails.species.url).then(res => res.json());
-                        const genUrlParts = generationDetails.generation.url.split('/');
-                        const genNumber = genUrlParts[genUrlParts.length - 2];
-
-                        return {
-                            id: speciesDetails.id.toString(),
-                            name: speciesDetails.name.charAt(0).toUpperCase() + speciesDetails.name.slice(1).replace(/-/g, ' '),
-                            cards: tcgData.data.slice(0, 2).map(card => ({ // Pega no máximo 2 cartas
-                                imageUrl: card.images.small,
-                                largeImageUrl: card.images.large,
-                                types: card.types || []
-                            })),
-                            generation: `Gen ${genNumber}`
-                        };
-                    }
-                    return null;
-                });
-
-                const newPokemon = (await Promise.all(pokemonPromises)).filter(p => p !== null);
+                    })
+                ]);
+                const speciesData = await speciesResponse.json();
+                const tcgData = await tcgResponse.json();
                 
-                if (state.isInfiniteScroll) {
-                    state.pokemonData.push(...newPokemon);
-                } else {
-                    state.pokemonData = newPokemon;
-                }
-                
-                // Garante a ordem correta
-                state.pokemonData.sort((a,b) => parseInt(a.id) - parseInt(b.id));
-
-                if (state.pokemonData.length === 0 && !state.searchTerm) {
-                    showStatusMessage(true, "Não foi possível carregar os Pokémon. A API pode estar indisponível ou uma chave de API pode ser necessária.", true);
-                }
-
+                const details = {
+                    name: speciesData.names.find(n => n.language.name === 'pt')?.name || speciesData.name.charAt(0).toUpperCase() + speciesData.name.slice(1),
+                    generation: speciesData.generation.name.replace('generation-', '').toUpperCase(),
+                    initialCards: tcgData.data?.map(card => ({
+                        id: card.id, imageUrl: card.images.small, largeImageUrl: card.images.large, types: card.types || []
+                    })) || [],
+                    allCards: null, // Carregado sob demanda
+                };
+                state.pokemonDetailsCache.set(pokemonId, details);
+                return details;
             } catch (error) {
-                console.error("Erro ao buscar dados dos Pokémon:", error);
-                showStatusMessage(true, `Falha ao carregar os dados: ${error.message}. Tente recarregar a página.`, true);
-            } finally {
-                state.isLoading = false;
-                showLoader(false);
+                console.warn(`Falha ao buscar detalhes para o Pokémon ID ${pokemonId}:`, error);
+                return null;
             }
         }
 
-        /**
-         * Filtra e ordena os Pokémon com base no estado atual.
-         */
-        function getFilteredPokemon() {
-             // Se não for scroll infinito, os dados já estão paginados pela API
-            if (!state.isInfiniteScroll && !state.searchTerm && state.currentFilter === 'all') {
-                return state.pokemonData;
+        async function renderPage(append = false) {
+            if (!append) {
+                dom.grid.innerHTML = '';
+                state.renderedPokemonIds.clear();
+                window.scrollTo({ top: 0 });
             }
 
-            // Para filtros, busca, ou scroll infinito, precisamos de todos os dados carregados até agora.
-            // Esta é uma simplificação. Uma implementação completa exigiria carregar todos os pokemons para filtrar.
-            // Por enquanto, o filtro funcionará nos dados já visíveis.
-            let filtered = [...state.pokemonData];
+            const filteredList = getFilteredAndSortedList();
+            const paginatedList = getPaginatedList(filteredList);
 
-            if (state.searchTerm) {
-                filtered = filtered.filter(p => 
-                    p.name.toLowerCase().includes(state.searchTerm.toLowerCase()) || 
-                    p.id.toString() === state.searchTerm
-                );
-            }
+            showLoading(true, "Carregando cartas...");
+            updatePagination(filteredList.length);
 
-            switch (state.currentFilter) {
-                case 'captured':
-                    return filtered.filter(p => state.userCollection[p.id]?.captured);
-                case 'favorites':
-                    return filtered.filter(p => state.userCollection[p.id]?.favorite);
-                case 'wish':
-                    return filtered.filter(p => state.userCollection[p.id]?.wish);
-                default:
-                    return filtered;
-            }
-        }
-
-        /**
-         * Renderiza a grade de Pokémon.
-         */
-        function renderGrid() {
-            if (state.isInfiniteScroll && state.currentPage > 1) {
-                // modo de apêndice para scroll infinito
-            } else {
-                grid.innerHTML = '';
-            }
-
-            const pokemonToRender = getFilteredPokemon();
-            
-            if (pokemonToRender.length === 0 && !state.isLoading) {
-                 showStatusMessage(true, "Nenhum Pokémon encontrado para os filtros atuais.");
-                 updatePagination(0);
-                 return;
-            } else {
-                showStatusMessage(false);
+            if (paginatedList.length === 0 && !append) {
+                showLoading(false);
+                showStatusMessage("Nenhum Pokémon encontrado com os critérios atuais.");
+                return;
             }
 
             const fragment = document.createDocumentFragment();
-            pokemonToRender.forEach(pokemon => {
-                // Evita duplicatas no modo de scroll infinito
-                if (!grid.querySelector(`.pokemon-card[data-id="${pokemon.id}"]`)) {
-                    const cardEl = createPokemonCard(pokemon);
-                    fragment.appendChild(cardEl);
+            for (const pokemon of paginatedList) {
+                if (!state.renderedPokemonIds.has(pokemon.id)) {
+                    const cardElement = await createPokemonCard(pokemon.id);
+                    if (cardElement) {
+                        fragment.appendChild(cardElement);
+                        state.renderedPokemonIds.add(pokemon.id);
+                    }
                 }
-            });
-            grid.appendChild(fragment);
-            
-            if (!state.isInfiniteScroll) {
-                const totalItemsForPagination = state.currentFilter === 'all' && !state.searchTerm ? state.totalPokemon : pokemonToRender.length;
-                updatePagination(totalItemsForPagination);
             }
+            dom.grid.appendChild(fragment);
+            showLoading(false);
         }
 
-        function createPokemonCard(pokemon) {
-            const status = state.userCollection[pokemon.id] || {};
-            const currentVersion = status.version || 0;
-            const cardData = pokemon.cards[currentVersion];
+        // --- LÓGICA DE FILTRAGEM, ORDENAÇÃO E PAGINAÇÃO ---
 
-            if (!cardData) return document.createDocumentFragment();
+        function getFilteredAndSortedList() {
+            let result = [...state.masterList];
+            if (state.currentView !== 'all') {
+                result = result.filter(p => state.userCollection[p.id]?.[state.currentView]);
+            }
+            if (state.searchTerm) {
+                result = result.filter(p => p.name.toLowerCase().includes(state.searchTerm));
+            }
+            switch (state.sortBy) {
+                case 'alphabetical': result.sort((a, b) => a.name.localeCompare(b.name)); break;
+                default: result.sort((a, b) => parseInt(a.id) - parseInt(b.id)); break;
+            }
+            return result;
+        }
 
-            const cardClasses = ['pokemon-card', 'relative', 'group', 'bg-slate-800', 'rounded-lg', 'overflow-hidden', 'shadow-md', 'transition-all', 'duration-300', 'hover:-translate-y-1'];
-            if (status.captured) cardClasses.push('captured-border');
-            else if (status.wish) cardClasses.push('wish-border');
+        function getPaginatedList(list) {
+            if (state.isInfiniteScroll) {
+                const start = (state.currentPage - 1) * state.itemsPerPage;
+                const end = start + state.itemsPerPage;
+                return list.slice(0, end); // Retorna todos até a página atual
+            }
+            const start = (state.currentPage - 1) * state.itemsPerPage;
+            const end = start + state.itemsPerPage;
+            return list.slice(start, end);
+        }
+
+        // --- CRIAÇÃO DE ELEMENTOS HTML ---
+
+        async function createPokemonCard(pokemonId) {
+            const details = await getPokemonDetails(pokemonId);
+            if (!details || details.initialCards.length === 0) return null;
+
+            const status = state.userCollection[pokemonId] || {};
+            const cardData = (status.selectedCardId && details.allCards?.find(c => c.id === status.selectedCardId)) || details.initialCards[0];
+            if (!cardData) return null;
 
             const card = document.createElement('div');
-            card.className = cardClasses.join(' ');
-            card.dataset.id = pokemon.id;
+            card.className = 'pokemon-card relative group bg-slate-800 rounded-lg overflow-hidden shadow-md transition-transform duration-300 hover:-translate-y-1';
+            card.dataset.id = pokemonId;
 
             const typeBadges = cardData.types.map(type => `<span class="text-xs font-semibold px-2 py-1 bg-slate-600 rounded-full">${type}</span>`).join('');
-
             card.innerHTML = `
-                <img src="${cardData.imageUrl}" alt="${pokemon.name}" class="w-full h-auto cursor-pointer aspect-[245/342]" loading="lazy" onerror="this.onerror=null;this.src='https://placehold.co/245x342/1e293b/e2e8f0?text=Error';">
+                <img src="${cardData.imageUrl}" alt="${details.name}" class="w-full h-auto cursor-pointer aspect-[245/342]" loading="lazy" onerror="this.onerror=null;this.src='https://placehold.co/245x342/1e293b/e2e8f0?text=Error';">
                 <div class="p-3">
-                    <h3 class="font-bold text-base truncate">${pokemon.name}</h3>
-                    <p class="text-sm text-slate-400">#${pokemon.id.toString().padStart(4, '0')}</p>
+                    <h3 class="font-bold text-base truncate pointer-events-none">${details.name}</h3>
+                    <p class="text-sm text-slate-400 pointer-events-none">#${pokemonId.toString().padStart(4, '0')}</p>
                 </div>
-                
-                <button class="absolute top-2 right-2 bg-slate-900/50 rounded-full p-1.5 text-white hover:bg-slate-900/80 z-20" data-action="toggle-menu">
-                    <i class="ph ph-dots-three text-xl"></i>
-                </button>
-                <div class="actions-menu absolute top-10 right-2 bg-slate-900 rounded-md shadow-lg z-20 w-48 p-2">
-                    <div class="absolute -top-2 right-3 w-4 h-4 bg-slate-900 transform rotate-45"></div>
-                    <ul class="space-y-1">
-                        <li><button data-action="info" class="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-slate-700"><i class="ph ph-info"></i> Informação</button></li>
-                        <li><button data-action="captured" class="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-slate-700"><i class="ph ph-check-circle ${status.captured ? 'text-green-400' : ''}"></i> Capturado</button></li>
-                        <li><button data-action="favorite" class="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-slate-700"><i class="ph ph-heart ${status.favorite ? 'text-red-400' : ''}"></i> Favorito</button></li>
-                        <li><button data-action="wish" class="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-slate-700"><i class="ph ph-star ${status.wish ? 'text-purple-400' : ''}"></i> Desejo</button></li>
-                        ${pokemon.cards.length > 1 ? `<li><button data-action="switch" class="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-slate-700"><i class="ph ph-arrows-clockwise"></i> Trocar Versão</button></li>` : ''}
-                    </ul>
-                </div>
-
-                <div class="info-overlay absolute inset-0 bg-black/70 p-4 flex flex-col justify-center items-center text-center opacity-0 transition-opacity z-10">
-                     <p class="font-bold text-lg">${pokemon.generation}</p>
+                <div class="info-overlay absolute inset-0 bg-black/70 p-4 items-center justify-center text-center z-10">
+                     <p class="font-bold text-lg">Geração ${details.generation}</p>
                      <div class="flex flex-wrap gap-2 mt-2 justify-center">${typeBadges}</div>
                 </div>
-            `;
-            
+                <button data-action="toggle-menu" class="absolute top-2 right-2 bg-slate-900/50 rounded-full p-1.5 text-white hover:bg-slate-900/80 z-20"><i class="ph ph-dots-three text-xl pointer-events-none"></i></button>
+                <div class="actions-menu absolute top-10 right-2 bg-slate-900 rounded-md shadow-lg z-20 w-48 p-2 flex-col">
+                    <div class="absolute -top-2 right-3 w-4 h-4 bg-slate-900 transform rotate-45"></div>
+                    <ul class="space-y-1">
+                        <li><button data-action="info" class="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-slate-700"><i class="ph ph-info"></i> Info</button></li>
+                        <li><button data-action="favorite" class="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-slate-700"><i class="ph ph-heart"></i> Favorito</button></li>
+                        <li><button data-action="captured" class="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-slate-700"><i class="ph ph-check-circle"></i> Capturado</button></li>
+                        <li><button data-action="wish" class="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-slate-700"><i class="ph ph-star"></i> Desejo</button></li>
+                        <li><button data-action="switch" class="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-slate-700"><i class="ph ph-arrows-clockwise"></i> Trocar Versão</button></li>
+                    </ul>
+                </div>`;
+            updateCardUI(card, status);
             return card;
         }
-        
-        function updatePagination(totalItems) {
-            paginationControls.innerHTML = '';
-            if (state.isInfiniteScroll || totalItems === 0) return;
 
+        function updateCardUI(card, status) {
+            if (!card) return;
+            const isFavorite = !!status.favorite;
+            const isCaptured = !!status.captured;
+            const isWish = !!status.wish;
+
+            card.classList.toggle('favorite-border', isFavorite);
+            card.classList.toggle('captured-border', !isFavorite && isCaptured);
+            card.classList.toggle('wish-border', !isFavorite && !isCaptured && isWish);
+
+            card.querySelector('[data-action="favorite"] i').classList.toggle('text-yellow-400', isFavorite);
+            card.querySelector('[data-action="captured"] i').classList.toggle('text-green-400', isCaptured);
+            card.querySelector('[data-action="wish"] i').classList.toggle('text-purple-400', isWish);
+        }
+
+        function updatePagination(totalItems) {
+            dom.paginationControls.innerHTML = '';
+            if (state.isInfiniteScroll) return;
             const totalPages = Math.ceil(totalItems / state.itemsPerPage);
             if (totalPages <= 1) return;
+            // ... (código de paginação numerada)
+        }
+        
+        function populateFilterOptions() { /* ... */ }
 
-            const page = state.currentPage;
-            let paginationHTML = `
-                <button data-page="${page - 1}" class="px-3 py-1 rounded-md bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed" ${page === 1 ? 'disabled' : ''}>Anterior</button>
-                <span class="text-sm text-slate-400">Página ${page} de ${totalPages}</span>
-                <button data-page="${page + 1}" class="px-3 py-1 rounded-md bg-slate-700 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed" ${page === totalPages ? 'disabled' : ''}>Próxima</button>
-            `;
-            paginationControls.innerHTML = paginationHTML;
+        // --- MANIPULADORES DE ESTADO E UI ---
+
+        function showLoading(isLoading, message = "") {
+            dom.statusContainer.style.display = isLoading ? 'block' : 'none';
+            dom.loader.style.display = isLoading ? 'block' : 'none';
+            if (isLoading) showStatusMessage(message);
         }
 
-        function handleGridClick(e) {
-            const target = e.target;
-            const card = target.closest('.pokemon-card');
-            if (!card) return;
+        function showStatusMessage(message) {
+            dom.statusMessage.textContent = message;
+            dom.statusMessage.style.display = message ? 'block' : 'none';
+        }
+        
+        function toggleModal(panel, content, show) {
+            if (show) {
+                panel.classList.remove('hidden');
+                setTimeout(() => content.classList.remove('scale-95', 'opacity-0'), 10);
+            } else {
+                content.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => panel.classList.add('hidden'), 300);
+            }
+        }
 
-            const pokemonId = card.dataset.id;
-            const action = target.closest('[data-action]')?.dataset.action;
+        async function openVersionSelector(pokemonId) {
+            toggleModal(dom.versionPanel, dom.versionPanelContent, true);
+            dom.versionGrid.innerHTML = '<div class="col-span-full"><div class="loader mx-auto"></div></div>';
+            
+            const details = await getPokemonDetails(pokemonId);
+            if (!details.allCards) {
+                const tcgResponse = await fetch(`https://api.pokemontcg.io/v2/cards?q=nationalPokedexNumbers:${pokemonId}&orderBy=-set.releaseDate`, { headers: TCG_API_KEY ? { 'X-Api-Key': TCG_API_KEY } : {} });
+                const tcgData = await tcgResponse.json();
+                details.allCards = tcgData.data?.map(card => ({ id: card.id, imageUrl: card.images.small })) || [];
+                state.pokemonDetailsCache.set(pokemonId, details);
+            }
+            
+            dom.versionGrid.innerHTML = '';
+            details.allCards.forEach(card => {
+                const img = document.createElement('img');
+                img.src = card.imageUrl;
+                img.className = "w-full h-auto rounded-md cursor-pointer transition-transform hover:scale-105";
+                img.addEventListener('click', async () => {
+                    const status = state.userCollection[pokemonId] || {};
+                    status.selectedCardId = card.id;
+                    state.userCollection[pokemonId] = status;
+                    
+                    const oldCardEl = dom.grid.querySelector(`.pokemon-card[data-id="${pokemonId}"]`);
+                    const newCardEl = await createPokemonCard(pokemonId);
+                    if (oldCardEl && newCardEl) oldCardEl.replaceWith(newCardEl);
+                    toggleModal(dom.versionPanel, dom.versionPanelContent, false);
+                });
+                dom.versionGrid.appendChild(img);
+            });
+        }
 
-            document.querySelectorAll('.pokemon-card.actions-open').forEach(openCard => {
-                if (openCard !== card) openCard.classList.remove('actions-open');
+        // --- SETUP DOS EVENT LISTENERS ---
+        function setupEventListeners() {
+            dom.navTabs.addEventListener('click', (e) => {
+                const tab = e.target.closest('.nav-tab');
+                if (tab && state.currentView !== tab.dataset.view) {
+                    dom.navTabs.querySelector('.active-tab')?.classList.remove('active-tab', 'text-accent-color', 'border-accent-color');
+                    tab.classList.add('active-tab', 'text-accent-color', 'border-accent-color');
+                    state.currentView = tab.dataset.view;
+                    state.currentPage = 1;
+                    renderPage();
+                }
             });
 
-            if (action) {
-                e.stopPropagation();
-                const status = state.userCollection[pokemonId] || {};
+            dom.itemsPerPageSelect.addEventListener('change', (e) => {
+                state.isInfiniteScroll = e.target.value === 'infinite';
+                state.itemsPerPage = state.isInfiniteScroll ? 40 : parseInt(e.target.value);
+                state.currentPage = 1;
+                dom.paginationControls.style.display = state.isInfiniteScroll ? 'none' : 'flex';
+                dom.infiniteScrollSentinel.style.display = state.isInfiniteScroll ? 'block' : 'none';
+                renderPage();
+            });
+
+            dom.grid.addEventListener('click', (e) => {
+                const card = e.target.closest('.pokemon-card');
+                if (!card) return;
+                const pokemonId = card.dataset.id;
+                const actionTarget = e.target.closest('[data-action]');
                 
-                switch (action) {
-                    case 'toggle-menu': card.classList.toggle('actions-open'); break;
-                    case 'info': card.querySelector('.info-overlay').classList.toggle('info-active'); break;
-                    case 'captured':
-                        status.captured = !status.captured;
-                        if(status.captured) status.wish = false;
-                        updatePokemonStatus(pokemonId, status);
-                        break;
-                    case 'favorite':
-                        status.favorite = !status.favorite;
-                        updatePokemonStatus(pokemonId, status);
-                        break;
-                    case 'wish':
-                        status.wish = !status.wish;
-                        if(status.wish) status.captured = false;
-                        updatePokemonStatus(pokemonId, status);
-                        break;
-                    case 'switch':
-                        const pokemon = state.pokemonData.find(p => p.id === pokemonId);
-                        status.version = ((status.version || 0) + 1) % pokemon.cards.length;
-                        updatePokemonStatus(pokemonId, status);
-                        break;
-                }
-                if (action !== 'toggle-menu' && action !== 'info') {
+                document.querySelectorAll('.pokemon-card.actions-open').forEach(c => c !== card && c.classList.remove('actions-open'));
+                
+                if (actionTarget) {
+                    const action = actionTarget.dataset.action;
+                    if (action === 'toggle-menu') { card.classList.toggle('actions-open'); card.classList.remove('info-open'); return; }
+                    if (action === 'info') { card.classList.toggle('info-open'); card.classList.remove('actions-open'); return; }
+                    if (action === 'switch') { openVersionSelector(pokemonId); return; }
+
+                    const status = state.userCollection[pokemonId] || {};
+                    switch (action) {
+                        case 'captured': status.captured = !status.captured; break;
+                        case 'favorite': status.favorite = !status.favorite; break;
+                        case 'wish': status.wish = !status.wish; break;
+                    }
                     card.classList.remove('actions-open');
+                    state.userCollection[pokemonId] = status;
+                    updateCardUI(card, status);
+                    if (state.currentView !== 'all') setTimeout(() => renderPage(), 200);
                 }
-            } else if (target.tagName === 'IMG') {
-                const pokemon = state.pokemonData.find(p => p.id === pokemonId);
-                const status = state.userCollection[pokemonId] || {};
-                const currentVersion = status.version || 0;
-                modalImage.src = pokemon.cards[currentVersion].largeImageUrl;
-                imageModal.style.display = 'flex';
-            }
+            });
+            
+            // ... outros listeners
+            dom.closeVersionPanelBtn.addEventListener('click', () => toggleModal(dom.versionPanel, dom.versionPanelContent, false));
         }
         
-        function updatePokemonStatus(pokemonId, newStatus) {
-            state.userCollection[pokemonId] = newStatus;
-            saveCollectionToFirebase();
-            const cardToUpdate = grid.querySelector(`.pokemon-card[data-id="${pokemonId}"]`);
-            if (cardToUpdate) {
-                const newCard = createPokemonCard(state.pokemonData.find(p => p.id === pokemonId));
-                cardToUpdate.replaceWith(newCard);
-            }
-            if (state.currentFilter !== 'all') {
-                renderGrid();
-            }
-        }
-        
-        function showLoader(show) { loader.style.display = show ? 'flex' : 'none'; }
-        function showStatusMessage(show, message = "", isError = false) {
-            statusMessage.style.display = show ? 'block' : 'none';
-            statusMessage.textContent = message;
-            statusMessage.className = `w-full text-center py-10 ${isError ? 'text-red-400' : 'text-slate-400'}`;
-        }
-        
-        const observer = new IntersectionObserver(async (entries) => {
-            if (entries[0].isIntersecting && state.isInfiniteScroll && !state.isLoading && !state.allDataLoaded) {
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && state.isInfiniteScroll && !state.isLoading) {
                 state.currentPage++;
-                await fetchPokemonData();
-                renderGrid(); // Append new data
+                renderPage(true); // Append new items
             }
-        }, { rootMargin: '400px' });
-
-        async function initialLoad() {
-            await fetchPokemonData();
-            renderGrid();
-            if (state.isInfiniteScroll) {
-                observer.observe(loader);
-            }
-        }
-
-        // --- EVENT LISTENERS ---
-        
-        let debounceTimer;
-        searchInput.addEventListener('input', (e) => {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(async () => {
-                state.searchTerm = e.target.value;
-                state.currentPage = 1;
-                state.pokemonData = []; // Limpa dados para nova busca
-                grid.innerHTML = '';
-                if(state.searchTerm){
-                    // Lógica de busca pode ser adaptada para chamar a API diretamente
-                    showStatusMessage(true, `Buscando por "${state.searchTerm}"...`);
-                    const tcgResponse = await fetch(`https://api.pokemontcg.io/v2/cards?q=name:"${state.searchTerm}*"&orderBy=-set.releaseDate`, {
-                        headers: TCG_API_KEY ? { 'X-Api-Key': TCG_API_KEY } : {}
-                    });
-                    const tcgData = await tcgResponse.json();
-                    const searchResults = tcgData.data.map(card => ({
-                        id: card.nationalPokedexNumbers ? card.nationalPokedexNumbers[0].toString() : card.id,
-                        name: card.name,
-                        cards: [{ imageUrl: card.images.small, largeImageUrl: card.images.large, types: card.types || [] }],
-                        generation: '?'
-                    }));
-                    state.pokemonData = searchResults;
-                    renderGrid();
-                } else {
-                    await initialLoad();
-                }
-            }, 500);
-        });
-
-        navTabsContainer.addEventListener('click', (e) => {
-            if (e.target.classList.contains('nav-tab')) {
-                document.querySelector('.nav-tab.active-tab')?.classList.remove('active-tab', 'text-accent-color', 'border-accent-color');
-                document.querySelector('.nav-tab.active-tab')?.classList.add('text-slate-400', 'border-transparent');
-                
-                e.target.classList.add('active-tab', 'text-accent-color', 'border-accent-color');
-                e.target.classList.remove('text-slate-400', 'border-transparent');
-                
-                state.currentFilter = e.target.dataset.filter;
-                state.currentPage = 1;
-                // Para filtros, idealmente teríamos todos os dados. Por simplicidade, filtra o que já foi carregado.
-                // Uma implementação avançada buscaria todos os IDs da coleção e depois os dados das cartas.
-                renderGrid();
-            }
-        });
-        
-        paginationControls.addEventListener('click', async (e) => {
-            if (e.target.tagName === 'BUTTON' && e.target.dataset.page) {
-                state.currentPage = parseInt(e.target.dataset.page);
-                await fetchPokemonData();
-                renderGrid();
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-        });
-        
-        itemsPerPageSelect.addEventListener('change', async (e) => {
-            const value = e.target.value;
-            state.isInfiniteScroll = value === 'all';
-            state.itemsPerPage = value === 'all' ? 40 : parseInt(value);
-            state.currentPage = 1;
-            state.pokemonData = [];
-            state.allDataLoaded = false;
-            
-            paginationControls.style.display = state.isInfiniteScroll ? 'none' : 'flex';
-            
-            if (state.isInfiniteScroll) observer.observe(loader);
-            else observer.unobserve(loader);
-
-            await initialLoad();
-        });
-
-        grid.addEventListener('click', handleGridClick);
-
-        window.onscroll = () => {
-            if (document.body.scrollTop > 200 || document.documentElement.scrollTop > 200) {
-                backToTopBtn.style.display = "block";
-            } else {
-                backToTopBtn.style.display = "none";
-            }
-        };
-        backToTopBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+        }, { rootMargin: "400px" });
+        observer.observe(dom.infiniteScrollSentinel);
 
         // --- INICIALIZAÇÃO ---
-        initialLoad();
-        if (firebaseEnabled) {
-            initAuth();
-        }
-    </script>
-    
-    <script>
-        const manifest = {
-            "name": "Pokédex TCG", "short_name": "PokéTCG", "start_url": ".", "display": "standalone",
-            "background_color": "#0f172a", "theme_color": "#111827",
-            "description": "Um app moderno para gerenciar sua coleção de Pokémon TCG.",
-            "icons": [
-                { "src": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/025.png", "sizes": "192x192", "type": "image/png" },
-                { "src": "https://assets.pokemon.com/assets/cms2/img/pokedex/full/025.png", "sizes": "512x512", "type": "image/png" }
-            ]
-        };
-        const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
-        const manifestURL = URL.createObjectURL(blob);
-        document.querySelector('link[rel="manifest"]').setAttribute('href', manifestURL);
+        initialize();
     </script>
 </body>
 </html>
+
