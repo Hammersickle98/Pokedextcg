@@ -13,480 +13,759 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Phosphor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-
+    <!-- Custom Styles -->
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; }
-        .accent-color { color: #facc15; }
-        .bg-accent-color { background-color: #facc15; }
-        .border-accent-color { border-color: #facc15; }
-
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #1e293b; }
-        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-
-        .loader {
-            width: 48px; height: 48px; border: 5px solid #FFF;
-            border-bottom-color: #facc15; border-radius: 50%;
-            display: inline-block; box-sizing: border-box;
-            animation: rotation 1s linear infinite;
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117; /* Cor de fundo principal (cinza escuro/azulado) */
         }
-        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Estilização da barra de rolagem */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1c2128;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4a5568;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #718096;
+        }
+        /* Classes de borda para status */
+        .status-border-favorito { border-color: #FBBF24 !important; } /* Dourado */
+        .status-border-capturado { border-color: #34D399 !important; } /* Verde */
+        .status-border-desejo { border-color: #A78BFA !important; } /* Roxo */
 
-        /* Cores das Bordas com a nova prioridade */
-        .pokemon-card.favorite-border { box-shadow: 0 0 0 3px #facc15, 0 0 10px #facc15; }
-        .pokemon-card:not(.favorite-border).captured-border { box-shadow: 0 0 0 3px #22c55e, 0 0 10px #22c55e; }
-        .pokemon-card:not(.favorite-border):not(.captured-border).wish-border { box-shadow: 0 0 0 3px #a855f7, 0 0 10px #a855f7; }
-        
-        /* Controles da UI */
-        .actions-menu, .info-overlay { display: none; opacity: 0; transition: opacity 0.2s ease-in-out; }
-        .actions-open .actions-menu, .info-open .info-overlay { display: flex; opacity: 1; }
-        .info-overlay { display: flex; pointer-events: none; }
-        .info-open .info-overlay { pointer-events: auto; }
-
-        .modal-panel { transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out; }
-        .filter-btn.active, .pagination-btn.active { background-color: #facc15; color: #111827; border-color: #facc15; }
+        /* Animação de carregamento */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #facc15;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
-<body class="antialiased">
+<body class="bg-gray-900 text-gray-200">
 
-    <!-- Cabeçalho Fixo -->
-    <header class="bg-slate-800/80 backdrop-blur-sm sticky top-0 z-40 w-full border-b border-slate-700">
-        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
-            <div class="flex items-center">
-                <img src="https://assets.pokemon.com/assets/cms2/img/pokedex/full/025.png" alt="Ícone do Pikachu" class="h-10 w-10 mr-2"/>
-                <h1 class="text-xl sm:text-2xl font-bold accent-color tracking-tight">Pokédex TCG</h1>
-            </div>
-            <div class="max-w-lg w-full lg:max-w-xs">
-                <div class="relative text-gray-400 focus-within:text-gray-200">
-                    <div class="pointer-events-none absolute inset-y-0 left-0 pl-3 flex items-center"><i class="ph ph-magnifying-glass text-lg"></i></div>
-                    <input id="search-input" class="block w-full bg-slate-700 border border-transparent rounded-md py-2 pl-10 pr-3 leading-5 text-gray-200 placeholder-gray-400 focus:outline-none focus:bg-slate-600 focus:border-slate-500 focus:ring-slate-500 sm:text-sm" placeholder="Buscar Pokémon..." type="search">
+    <!-- Header -->
+    <header class="bg-gray-800/80 backdrop-blur-sm sticky top-0 z-40 shadow-lg">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                <h1 class="text-2xl font-bold text-yellow-400">Pokédex TCG</h1>
+                <div class="w-full sm:w-auto sm:max-w-xs">
+                    <input type="search" id="search-input" placeholder="Buscar por nome ou número..." class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400 transition">
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- Navegação Principal (Abas) -->
-    <nav class="bg-slate-800 border-b border-slate-700">
-        <div id="nav-tabs" class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-center space-x-4 sm:space-x-8">
-            <button data-view="all" class="nav-tab active-tab font-medium text-sm sm:text-base py-3 px-1 border-b-2 border-accent-color text-accent-color">Todos</button>
-            <button data-view="favorites" class="nav-tab text-slate-400 hover:text-white font-medium text-sm sm:text-base py-3 px-1 border-b-2 border-transparent">Favoritos</button>
-            <button data-view="captured" class="nav-tab text-slate-400 hover:text-white font-medium text-sm sm:text-base py-3 px-1 border-b-2 border-transparent">Capturados</button>
-            <button data-view="wish" class="nav-tab text-slate-400 hover:text-white font-medium text-sm sm:text-base py-3 px-1 border-b-2 border-transparent">Desejo</button>
+    <!-- Main Content -->
+    <main class="container mx-auto p-4">
+        <!-- Navigation Tabs -->
+        <div id="tabs" class="flex space-x-2 sm:space-x-4 border-b border-gray-700 mb-4">
+            <button data-tab="all" class="tab-btn font-semibold py-2 px-4 border-b-2 border-transparent hover:border-yellow-400 transition">Todos</button>
+            <button data-tab="favorites" class="tab-btn font-semibold py-2 px-4 border-b-2 border-transparent hover:border-yellow-400 transition">Favoritos</button>
+            <button data-tab="captured" class="tab-btn font-semibold py-2 px-4 border-b-2 border-transparent hover:border-yellow-400 transition">Capturados</button>
+            <button data-tab="wishlist" class="tab-btn font-semibold py-2 px-4 border-b-2 border-transparent hover:border-yellow-400 transition">Desejo</button>
         </div>
-    </nav>
 
-    <!-- Conteúdo Principal -->
-    <main class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Controles -->
-        <div id="controls-container" class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-            <div class="flex flex-wrap items-center gap-4">
-                <select id="items-per-page-select" class="bg-slate-700 border border-slate-600 rounded-md text-sm py-1.5 px-2 focus:ring-accent-color focus:border-accent-color">
-                    <option value="40">40 / página</option><option value="80">80 / página</option><option value="120">120 / página</option><option value="infinite">Scroll Infinito</option>
-                </select>
-                <select id="sort-by-select" class="bg-slate-700 border border-slate-600 rounded-md text-sm py-1.5 px-2 focus:ring-accent-color focus:border-accent-color">
-                    <option value="pokedex">Ordenar por Número</option><option value="alphabetical">Ordenar por Nome</option>
-                </select>
-                <button id="filter-toggle-btn" class="flex items-center gap-2 bg-slate-700 px-4 py-1.5 rounded-md hover:bg-slate-600">
-                    <i class="ph ph-funnel text-lg"></i><span class="text-sm font-medium">Filtros</span>
-                </button>
-            </div>
-            <div id="pagination-controls" class="flex items-center gap-1 sm:gap-2 flex-wrap justify-center"></div>
+        <!-- Controls -->
+        <div class="flex flex-wrap gap-4 items-center mb-6">
+            <select id="sort-select" class="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                <option value="pokedex_number">Ordenar por Número</option>
+                <option value="alphabetical">Ordenar por Nome</option>
+            </select>
+            <button id="filter-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition">Filtros</button>
+            <div id="pagination-controls" class="flex items-center gap-2 ml-auto"></div>
         </div>
         
-        <!-- Grade de Pokémon -->
-        <div id="pokedex-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4 sm:gap-6 min-h-[50vh]"></div>
-        <div id="infinite-scroll-sentinel" class="h-10 w-full"></div>
+        <!-- Loading Indicator -->
+        <div id="loading" class="flex justify-center items-center h-64">
+             <div class="loader"></div>
+        </div>
 
-        <!-- Mensagens e Carregamento -->
-        <div id="status-container" class="w-full text-center py-10">
-            <div id="loader" class="loader mx-auto"></div>
-            <p id="status-message" class="text-slate-400 mt-4 hidden"></p>
+        <!-- Pokémon Grid -->
+        <div id="pokedex-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            <!-- Pokémon cards will be inserted here by JavaScript -->
         </div>
     </main>
 
-    <!-- Painel de Filtros (Modal) -->
-    <div id="filter-panel" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center">
-        <div id="filter-panel-content" class="modal-panel bg-slate-800 rounded-lg shadow-2xl p-6 w-11/12 max-w-2xl max-h-[80vh] flex flex-col transform scale-95 opacity-0">
-            <div class="flex justify-between items-center mb-4"><h2 class="text-xl font-bold text-accent-color">Filtros</h2><button id="close-filter-panel-btn"><i class="ph ph-x text-2xl hover:text-accent-color"></i></button></div>
-            <div class="overflow-y-auto pr-2 space-y-6">
-                <div><h3 class="font-semibold mb-3">Geração</h3><div id="generation-filters" class="flex flex-wrap gap-2"></div></div>
-                <div><h3 class="font-semibold mb-3">Tipo</h3><div id="type-filters" class="flex flex-wrap gap-2"></div></div>
+    <!-- Back to Top Button -->
+    <button id="back-to-top" class="hidden fixed bottom-5 right-5 bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold p-3 rounded-full shadow-lg transition-opacity">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+        </svg>
+    </button>
+
+    <!-- Modals -->
+    <!-- Filter Modal -->
+    <div id="filter-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6">
+            <h3 class="text-xl font-bold mb-4 text-yellow-400">Filtros Avançados</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="font-semibold block mb-2">Geração</label>
+                    <div id="generation-filters" class="grid grid-cols-3 gap-2">
+                        <!-- Generation buttons will be inserted here -->
+                    </div>
+                </div>
+                <div>
+                    <label class="font-semibold block mb-2">Tipo</label>
+                    <div id="type-filters" class="grid grid-cols-3 gap-2">
+                        <!-- Type buttons will be inserted here -->
+                    </div>
+                </div>
             </div>
-            <div class="mt-6 pt-4 border-t border-slate-700 flex justify-end gap-4">
-                <button id="clear-filters-btn" class="text-sm font-medium text-slate-400 hover:text-white">Limpar</button>
-                <button id="apply-filters-btn" class="text-sm font-bold bg-accent-color text-slate-900 px-6 py-2 rounded-md hover:bg-yellow-300">Aplicar</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Painel Seletor de Versão (Modal) -->
-    <div id="version-panel" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
-        <div id="version-panel-content" class="modal-panel bg-slate-800 rounded-lg shadow-2xl p-6 w-11/12 max-w-4xl max-h-[80vh] flex flex-col transform scale-95 opacity-0">
-            <div class="flex justify-between items-center mb-4"><h2 class="text-xl font-bold text-accent-color">Selecione uma Versão</h2><button id="close-version-panel-btn"><i class="ph ph-x text-2xl hover:text-accent-color"></i></button></div>
-            <div id="version-grid-container" class="overflow-y-auto pr-2">
-                <div id="version-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4"></div>
+            <div class="mt-6 flex justify-end gap-3">
+                <button id="reset-filters-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition">Limpar</button>
+                <button id="apply-filters-btn" class="bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold py-2 px-4 rounded-lg transition">Aplicar</button>
             </div>
         </div>
     </div>
 
-    <!-- Outros Componentes de UI -->
-    <div id="image-modal" class="fixed inset-0 bg-black/80 z-50 hidden items-center justify-center p-4 cursor-pointer" onclick="this.style.display='none'"><img id="modal-image" src="" alt="Visualização da carta" class="max-w-full max-h-full object-contain rounded-lg shadow-2xl"></div>
-    <button id="back-to-top-btn" class="fixed bottom-5 right-5 bg-accent-color text-slate-900 rounded-full p-3 shadow-lg hidden opacity-0 transition-opacity duration-300 hover:bg-yellow-300 z-30"><i class="ph ph-arrow-up text-2xl"></i></button>
+    <!-- Image Viewer Modal -->
+    <div id="image-viewer-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 flex justify-center items-center p-4" onclick="this.classList.add('hidden')">
+        <img id="fullscreen-image" src="" alt="Pokémon Card Fullscreen" class="max-w-full max-h-full object-contain rounded-lg">
+    </div>
 
+    <!-- Version Switcher Panel -->
+    <div id="version-switcher-panel" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-yellow-400">Escolha uma Versão da Carta</h3>
+                <button id="close-version-switcher" class="text-gray-400 hover:text-white">&times;</button>
+            </div>
+            <div id="version-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4 max-h-[70vh] overflow-y-auto">
+                <!-- Card versions will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
     <script type="module">
-        // --- CONFIGURAÇÃO ---
-        const POKEMON_SPECIES_COUNT = 1025;
-        const TCG_API_KEY = "";
+        // Importações do Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- ESTADO DA APLICAÇÃO ---
-        const state = {
-            masterList: [],
-            pokemonDetailsCache: new Map(),
-            userCollection: {},
-            currentView: 'all',
-            sortBy: 'pokedex',
-            searchTerm: '',
-            activeFilters: { generation: new Set(), type: new Set() },
-            currentPage: 1,
-            itemsPerPage: 40,
-            isLoading: true,
-            isInfiniteScroll: false,
-            renderedPokemonIds: new Set(),
+        // --- CONFIGURAÇÃO ---
+        const POKEAPI_BASE_URL = 'https://pokeapi.co/api/v2';
+        const TCG_API_BASE_URL = 'https://api.pokemontcg.io/v2/cards';
+        // NOTA: A API do TCG pode requerer uma chave de API para uso em produção.
+        // Para este exemplo, usamos o acesso público.
+        const TCG_API_KEY = ''; // Adicione sua chave aqui se necessário
+
+        const GENERATIONS = {
+            1: { limit: 151, offset: 0 }, 2: { limit: 100, offset: 151 },
+            3: { limit: 135, offset: 251 }, 4: { limit: 107, offset: 386 },
+            5: { limit: 156, offset: 493 }, 6: { limit: 72, offset: 649 },
+            7: { limit: 88, offset: 721 }, 8: { limit: 96, offset: 809 },
+            9: { limit: 105, offset: 905 }
         };
+
+        const TYPES = [
+            'Grass', 'Fire', 'Water', 'Lightning', 'Psychic', 'Fighting', 'Darkness', 'Metal', 'Dragon', 'Fairy', 'Colorless', 'Normal'
+        ];
 
         // --- ELEMENTOS DO DOM ---
-        const dom = {
-            grid: document.getElementById('pokedex-grid'),
-            loader: document.getElementById('loader'),
-            statusContainer: document.getElementById('status-container'),
-            statusMessage: document.getElementById('status-message'),
-            navTabs: document.getElementById('nav-tabs'),
-            searchInput: document.getElementById('search-input'),
-            itemsPerPageSelect: document.getElementById('items-per-page-select'),
-            sortBySelect: document.getElementById('sort-by-select'),
-            paginationControls: document.getElementById('pagination-controls'),
-            filterToggleBtn: document.getElementById('filter-toggle-btn'),
-            filterPanel: document.getElementById('filter-panel'),
-            filterPanelContent: document.getElementById('filter-panel-content'),
-            closeFilterPanelBtn: document.getElementById('close-filter-panel-btn'),
-            generationFilters: document.getElementById('generation-filters'),
-            typeFilters: document.getElementById('type-filters'),
-            clearFiltersBtn: document.getElementById('clear-filters-btn'),
-            applyFiltersBtn: document.getElementById('apply-filters-btn'),
-            versionPanel: document.getElementById('version-panel'),
-            versionPanelContent: document.getElementById('version-panel-content'),
-            closeVersionPanelBtn: document.getElementById('close-version-panel-btn'),
-            versionGrid: document.getElementById('version-grid'),
-            imageModal: document.getElementById('image-modal'),
-            modalImage: document.getElementById('modal-image'),
-            backToTopBtn: document.getElementById('back-to-top-btn'),
-            infiniteScrollSentinel: document.getElementById('infinite-scroll-sentinel'),
-        };
+        const grid = document.getElementById('pokedex-grid');
+        const searchInput = document.getElementById('search-input');
+        const sortSelect = document.getElementById('sort-select');
+        const tabs = document.getElementById('tabs');
+        const loadingIndicator = document.getElementById('loading');
+        const filterBtn = document.getElementById('filter-btn');
+        const filterModal = document.getElementById('filter-modal');
+        const applyFiltersBtn = document.getElementById('apply-filters-btn');
+        const resetFiltersBtn = document.getElementById('reset-filters-btn');
+        const generationFiltersContainer = document.getElementById('generation-filters');
+        const typeFiltersContainer = document.getElementById('type-filters');
+        const backToTopBtn = document.getElementById('back-to-top');
 
-        // --- LÓGICA PRINCIPAL ---
+        // --- ESTADO DA APLICAÇÃO ---
+        let masterPokemonList = []; // Lista mestra de todos os Pokémon
+        let pokemonCache = new Map(); // Cache para dados das cartas TCG
+        let userCollection = {}; // Coleção do usuário (favoritos, capturados, etc.)
+        let currentPokemonList = []; // Lista atualmente exibida
+        let activeTab = 'all';
+        let activeSort = 'pokedex_number';
+        let activeFilters = { generations: new Set(), types: new Set() };
+        let userId = null;
+        let db;
+        let auth;
+        let collectionUnsubscribe = null; // Função para cancelar o listener do Firestore
 
-        async function initialize() {
-            setupEventListeners();
-            showLoading(true, "Buscando Pokémon...");
-            await fetchMasterList();
-            showLoading(false);
-            if (state.masterList.length > 0) {
-                renderPage();
-                populateFilterOptions();
+        // --- CONFIGURAÇÃO DO FIREBASE ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'pokedex-tcg-app-default';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "YOUR_API_KEY", authDomain: "...", projectId: "..." };
+        
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+        } catch (error) {
+            console.error("Erro ao inicializar o Firebase:", error);
+            loadingIndicator.innerHTML = '<p class="text-red-400">Erro de configuração. Não foi possível conectar ao banco de dados.</p>';
+            // CORREÇÃO: Removido 'return' ilegal do escopo global.
+        }
+
+        // --- AUTENTICAÇÃO E DADOS DO USUÁRIO ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+                loadUserCollection();
             } else {
-                showStatusMessage("Não foi possível carregar os dados. Tente recarregar a página.");
-            }
-        }
-
-        async function fetchMasterList() {
-            try {
-                const response = await fetch(`https://pokeapi.co/api/v2/pokemon-species?limit=${POKEMON_SPECIES_COUNT}`);
-                const data = await response.json();
-                state.masterList = data.results.map(p => ({
-                    id: p.url.split('/')[6],
-                    name: p.name,
-                }));
-            } catch (error) {
-                console.error("Falha ao buscar lista de Pokémon:", error);
-            }
-        }
-
-        async function getPokemonDetails(pokemonId) {
-            if (state.pokemonDetailsCache.has(pokemonId)) {
-                return state.pokemonDetailsCache.get(pokemonId);
-            }
-            try {
-                const [speciesResponse, tcgResponse] = await Promise.all([
-                    fetch(`https://pokeapi.co/api/v2/pokemon-species/${pokemonId}/`),
-                    fetch(`https://api.pokemontcg.io/v2/cards?q=nationalPokedexNumbers:${pokemonId}&orderBy=-set.releaseDate&pageSize=2`, {
-                        headers: TCG_API_KEY ? { 'X-Api-Key': TCG_API_KEY } : {}
-                    })
-                ]);
-                const speciesData = await speciesResponse.json();
-                const tcgData = await tcgResponse.json();
-                
-                const details = {
-                    name: speciesData.names.find(n => n.language.name === 'pt')?.name || speciesData.name.charAt(0).toUpperCase() + speciesData.name.slice(1),
-                    generation: speciesData.generation.name.replace('generation-', '').toUpperCase(),
-                    initialCards: tcgData.data?.map(card => ({
-                        id: card.id, imageUrl: card.images.small, largeImageUrl: card.images.large, types: card.types || []
-                    })) || [],
-                    allCards: null, // Carregado sob demanda
-                };
-                state.pokemonDetailsCache.set(pokemonId, details);
-                return details;
-            } catch (error) {
-                console.warn(`Falha ao buscar detalhes para o Pokémon ID ${pokemonId}:`, error);
-                return null;
-            }
-        }
-
-        async function renderPage(append = false) {
-            if (!append) {
-                dom.grid.innerHTML = '';
-                state.renderedPokemonIds.clear();
-                window.scrollTo({ top: 0 });
-            }
-
-            const filteredList = getFilteredAndSortedList();
-            const paginatedList = getPaginatedList(filteredList);
-
-            showLoading(true, "Carregando cartas...");
-            updatePagination(filteredList.length);
-
-            if (paginatedList.length === 0 && !append) {
-                showLoading(false);
-                showStatusMessage("Nenhum Pokémon encontrado com os critérios atuais.");
-                return;
-            }
-
-            const fragment = document.createDocumentFragment();
-            for (const pokemon of paginatedList) {
-                if (!state.renderedPokemonIds.has(pokemon.id)) {
-                    const cardElement = await createPokemonCard(pokemon.id);
-                    if (cardElement) {
-                        fragment.appendChild(cardElement);
-                        state.renderedPokemonIds.add(pokemon.id);
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
                     }
+                } catch (error) {
+                    console.error("Erro na autenticação anônima:", error);
                 }
             }
-            dom.grid.appendChild(fragment);
-            showLoading(false);
+        });
+
+        function getCollectionRef() {
+            if (!userId) return null;
+            return doc(db, 'artifacts', appId, 'users', userId, 'collection', 'data');
         }
 
-        // --- LÓGICA DE FILTRAGEM, ORDENAÇÃO E PAGINAÇÃO ---
+        async function loadUserCollection() {
+            if (collectionUnsubscribe) collectionUnsubscribe(); // Cancela listener anterior
+            const docRef = getCollectionRef();
+            if (!docRef) return;
 
-        function getFilteredAndSortedList() {
-            let result = [...state.masterList];
-            if (state.currentView !== 'all') {
-                result = result.filter(p => state.userCollection[p.id]?.[state.currentView]);
-            }
-            if (state.searchTerm) {
-                result = result.filter(p => p.name.toLowerCase().includes(state.searchTerm));
-            }
-            switch (state.sortBy) {
-                case 'alphabetical': result.sort((a, b) => a.name.localeCompare(b.name)); break;
-                default: result.sort((a, b) => parseInt(a.id) - parseInt(b.id)); break;
-            }
-            return result;
+            collectionUnsubscribe = onSnapshot(docRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    userCollection = docSnap.data();
+                } else {
+                    userCollection = {};
+                }
+                // Re-renderiza a lista para refletir os dados atualizados
+                if(masterPokemonList.length > 0) {
+                    renderPokemonGrid();
+                }
+            }, (error) => {
+                console.error("Erro ao ouvir a coleção:", error);
+            });
         }
 
-        function getPaginatedList(list) {
-            if (state.isInfiniteScroll) {
-                const start = (state.currentPage - 1) * state.itemsPerPage;
-                const end = start + state.itemsPerPage;
-                return list.slice(0, end); // Retorna todos até a página atual
+        async function saveUserCollection() {
+            const docRef = getCollectionRef();
+            if (!docRef) return;
+            try {
+                await setDoc(docRef, userCollection);
+            } catch (error) {
+                console.error("Erro ao salvar a coleção:", error);
             }
-            const start = (state.currentPage - 1) * state.itemsPerPage;
-            const end = start + state.itemsPerPage;
-            return list.slice(start, end);
+        }
+        
+        // --- LÓGICA PRINCIPAL ---
+
+        // 1. Carregar a lista mestra de Pokémon da PokeAPI
+        async function fetchMasterList() {
+            loadingIndicator.style.display = 'flex';
+            try {
+                // Usamos uma espécie para obter a lista completa, incluindo variações.
+                const response = await fetch(`${POKEAPI_BASE_URL}/pokemon-species?limit=1010`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const data = await response.json();
+                
+                masterPokemonList = data.results.map(pokemon => {
+                    const urlParts = pokemon.url.split('/');
+                    const id = parseInt(urlParts[urlParts.length - 2]);
+                    return {
+                        name: pokemon.name,
+                        pokedex_number: id,
+                        // Adicionamos a geração aqui para facilitar a filtragem
+                        generation: getGenerationFromId(id)
+                    };
+                });
+                
+                // Inicializa a UI
+                initializeUI();
+                renderPokemonGrid();
+
+            } catch (error) {
+                console.error("Falha ao buscar lista de Pokémon:", error);
+                loadingIndicator.innerHTML = '<p class="text-red-400">Não foi possível carregar os Pokémon. Tente recarregar a página.</p>';
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
         }
 
-        // --- CRIAÇÃO DE ELEMENTOS HTML ---
+        function getGenerationFromId(id) {
+            for (const gen in GENERATIONS) {
+                const { offset, limit } = GENERATIONS[gen];
+                if (id > offset && id <= offset + limit) {
+                    return parseInt(gen);
+                }
+            }
+            return null;
+        }
 
-        async function createPokemonCard(pokemonId) {
-            const details = await getPokemonDetails(pokemonId);
-            if (!details || details.initialCards.length === 0) return null;
+        // 2. Renderizar a grade de Pokémon
+        function renderPokemonGrid() {
+            grid.innerHTML = '';
+            
+            // A. Filtrar
+            let filteredList = filterPokemonList();
 
-            const status = state.userCollection[pokemonId] || {};
-            const cardData = (status.selectedCardId && details.allCards?.find(c => c.id === status.selectedCardId)) || details.initialCards[0];
-            if (!cardData) return null;
+            // B. Ordenar
+            sortPokemonList(filteredList);
+            
+            currentPokemonList = filteredList;
 
+            if(currentPokemonList.length === 0) {
+                grid.innerHTML = `<p class="col-span-full text-center text-gray-400 py-10">Nenhum Pokémon encontrado com os critérios selecionados.</p>`;
+                return;
+            }
+            
+            // C. Criar e adicionar cards
+            currentPokemonList.forEach(pokemon => {
+                const card = createPokemonCardElement(pokemon);
+                grid.appendChild(card);
+            });
+        }
+
+        // Função para filtrar a lista de Pokémon com base na aba ativa, busca e filtros
+        function filterPokemonList() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+
+            return masterPokemonList.filter(pokemon => {
+                // Filtro por busca (nome ou número)
+                const matchesSearch = searchTerm === '' ||
+                    pokemon.name.toLowerCase().includes(searchTerm) ||
+                    pokemon.pokedex_number.toString().includes(searchTerm);
+                if (!matchesSearch) return false;
+
+                // Filtro por aba de coleção
+                const status = userCollection[pokemon.pokedex_number]?.status;
+                const matchesTab = activeTab === 'all' ||
+                    (activeTab === 'favorites' && status === 'favorito') ||
+                    (activeTab === 'captured' && status === 'capturado') ||
+                    (activeTab === 'wishlist' && status === 'desejo');
+                if (!matchesTab) return false;
+
+                // Filtro por Geração
+                if (activeFilters.generations.size > 0 && !activeFilters.generations.has(pokemon.generation)) {
+                    return false;
+                }
+
+                // Filtro por Tipo (requer dados da carta, então verificamos o cache)
+                if (activeFilters.types.size > 0) {
+                    const cachedCard = pokemonCache.get(pokemon.pokedex_number);
+                    if (!cachedCard || !cachedCard.types) return true; // Se não carregado, assume que pode corresponder
+                    const cardTypes = new Set(cachedCard.types.map(t => t));
+                    const filterTypes = new Set(activeFilters.types);
+                    const intersection = new Set([...cardTypes].filter(x => filterTypes.has(x)));
+                    if (intersection.size === 0) return false;
+                }
+
+                return true;
+            });
+        }
+
+        // Função para ordenar a lista
+        function sortPokemonList(list) {
+            list.sort((a, b) => {
+                if (activeSort === 'alphabetical') {
+                    return a.name.localeCompare(b.name);
+                }
+                // Padrão é por número da Pokédex
+                return a.pokedex_number - b.pokedex_number;
+            });
+        }
+
+        // 3. Criar o elemento do card (com placeholder)
+        function createPokemonCardElement(pokemon) {
             const card = document.createElement('div');
-            card.className = 'pokemon-card relative group bg-slate-800 rounded-lg overflow-hidden shadow-md transition-transform duration-300 hover:-translate-y-1';
-            card.dataset.id = pokemonId;
+            card.className = 'card-container bg-gray-800 rounded-lg shadow-md overflow-hidden transform hover:-translate-y-1 transition-all duration-300 relative border-2 border-transparent';
+            card.dataset.pokemonId = pokemon.pokedex_number;
+            card.dataset.pokemonName = pokemon.name;
 
-            const typeBadges = cardData.types.map(type => `<span class="text-xs font-semibold px-2 py-1 bg-slate-600 rounded-full">${type}</span>`).join('');
+            const status = userCollection[pokemon.pokedex_number]?.status;
+            if (status) {
+                card.classList.add(`status-border-${status}`);
+            }
+
+            const artUrl = userCollection[pokemon.pokedex_number]?.artUrl;
+
             card.innerHTML = `
-                <img src="${cardData.imageUrl}" alt="${details.name}" class="w-full h-auto cursor-pointer aspect-[245/342]" loading="lazy" onerror="this.onerror=null;this.src='https://placehold.co/245x342/1e293b/e2e8f0?text=Error';">
+                <div class="w-full h-48 bg-gray-700 flex items-center justify-center image-placeholder">
+                    <div class="loader-small" style="width: 30px; height: 30px; border-width: 3px; border-top-color: #facc15; animation: spin 1s linear infinite; border-radius: 50%;"></div>
+                </div>
+                <img data-src="${artUrl || 'default'}" class="pokemon-image w-full h-48 object-cover hidden" alt="${pokemon.name}" loading="lazy">
                 <div class="p-3">
-                    <h3 class="font-bold text-base truncate pointer-events-none">${details.name}</h3>
-                    <p class="text-sm text-slate-400 pointer-events-none">#${pokemonId.toString().padStart(4, '0')}</p>
+                    <h3 class="font-bold text-md truncate">${pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1)}</h3>
+                    <p class="text-sm text-gray-400">#${pokemon.pokedex_number.toString().padStart(3, '0')}</p>
                 </div>
-                <div class="info-overlay absolute inset-0 bg-black/70 p-4 items-center justify-center text-center z-10">
-                     <p class="font-bold text-lg">Geração ${details.generation}</p>
-                     <div class="flex flex-wrap gap-2 mt-2 justify-center">${typeBadges}</div>
+                <button class="action-menu-btn absolute top-2 right-2 bg-gray-900/50 p-1 rounded-full text-white hover:bg-gray-900/80">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" /></svg>
+                </button>
+                <div class="action-menu hidden absolute top-10 right-2 bg-gray-700 rounded-md shadow-lg z-10 text-sm py-1">
+                    <a href="#" class="action-item block px-4 py-2 hover:bg-gray-600" data-action="info">Info</a>
+                    <a href="#" class="action-item block px-4 py-2 hover:bg-gray-600" data-action="favorite">Favorito</a>
+                    <a href="#" class="action-item block px-4 py-2 hover:bg-gray-600" data-action="capture">Capturado</a>
+                    <a href="#" class="action-item block px-4 py-2 hover:bg-gray-600" data-action="wish">Desejo</a>
+                    <a href="#" class="action-item block px-4 py-2 hover:bg-gray-600" data-action="switch_version">Trocar Versão</a>
                 </div>
-                <button data-action="toggle-menu" class="absolute top-2 right-2 bg-slate-900/50 rounded-full p-1.5 text-white hover:bg-slate-900/80 z-20"><i class="ph ph-dots-three text-xl pointer-events-none"></i></button>
-                <div class="actions-menu absolute top-10 right-2 bg-slate-900 rounded-md shadow-lg z-20 w-48 p-2 flex-col">
-                    <div class="absolute -top-2 right-3 w-4 h-4 bg-slate-900 transform rotate-45"></div>
-                    <ul class="space-y-1">
-                        <li><button data-action="info" class="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-slate-700"><i class="ph ph-info"></i> Info</button></li>
-                        <li><button data-action="favorite" class="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-slate-700"><i class="ph ph-heart"></i> Favorito</button></li>
-                        <li><button data-action="captured" class="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-slate-700"><i class="ph ph-check-circle"></i> Capturado</button></li>
-                        <li><button data-action="wish" class="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-slate-700"><i class="ph ph-star"></i> Desejo</button></li>
-                        <li><button data-action="switch" class="w-full text-left flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-slate-700"><i class="ph ph-arrows-clockwise"></i> Trocar Versão</button></li>
-                    </ul>
-                </div>`;
-            updateCardUI(card, status);
+                <div class="info-overlay hidden absolute inset-0 bg-black/70 p-3 flex flex-col justify-center items-center text-center"></div>
+            `;
+            
+            // Adiciona IntersectionObserver para lazy loading
+            const observer = new IntersectionObserver((entries, obs) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        loadCardDetails(entry.target);
+                        obs.unobserve(entry.target);
+                    }
+                });
+            }, { rootMargin: '200px' });
+
+            observer.observe(card);
+            
+            addCardEventListeners(card);
+
             return card;
         }
 
-        function updateCardUI(card, status) {
-            if (!card) return;
-            const isFavorite = !!status.favorite;
-            const isCaptured = !!status.captured;
-            const isWish = !!status.wish;
+        // 4. Carregar detalhes da carta (Lazy Loading)
+        async function loadCardDetails(cardElement) {
+            const pokemonId = parseInt(cardElement.dataset.pokemonId);
+            const pokemonName = cardElement.dataset.pokemonName;
+            const imgElement = cardElement.querySelector('.pokemon-image');
+            const placeholder = cardElement.querySelector('.image-placeholder');
+            const userArtUrl = userCollection[pokemonId]?.artUrl;
 
-            card.classList.toggle('favorite-border', isFavorite);
-            card.classList.toggle('captured-border', !isFavorite && isCaptured);
-            card.classList.toggle('wish-border', !isFavorite && !isCaptured && isWish);
-
-            card.querySelector('[data-action="favorite"] i').classList.toggle('text-yellow-400', isFavorite);
-            card.querySelector('[data-action="captured"] i').classList.toggle('text-green-400', isCaptured);
-            card.querySelector('[data-action="wish"] i').classList.toggle('text-purple-400', isWish);
-        }
-
-        function updatePagination(totalItems) {
-            dom.paginationControls.innerHTML = '';
-            if (state.isInfiniteScroll) return;
-            const totalPages = Math.ceil(totalItems / state.itemsPerPage);
-            if (totalPages <= 1) return;
-            // ... (código de paginação numerada)
-        }
-        
-        function populateFilterOptions() { /* ... */ }
-
-        // --- MANIPULADORES DE ESTADO E UI ---
-
-        function showLoading(isLoading, message = "") {
-            dom.statusContainer.style.display = isLoading ? 'block' : 'none';
-            dom.loader.style.display = isLoading ? 'block' : 'none';
-            if (isLoading) showStatusMessage(message);
-        }
-
-        function showStatusMessage(message) {
-            dom.statusMessage.textContent = message;
-            dom.statusMessage.style.display = message ? 'block' : 'none';
-        }
-        
-        function toggleModal(panel, content, show) {
-            if (show) {
-                panel.classList.remove('hidden');
-                setTimeout(() => content.classList.remove('scale-95', 'opacity-0'), 10);
-            } else {
-                content.classList.add('scale-95', 'opacity-0');
-                setTimeout(() => panel.classList.add('hidden'), 300);
+            // Se já estiver no cache, usa os dados
+            if (pokemonCache.has(pokemonId) && !userArtUrl) {
+                updateCardUI(cardElement, pokemonCache.get(pokemonId));
+                return;
             }
-        }
 
-        async function openVersionSelector(pokemonId) {
-            toggleModal(dom.versionPanel, dom.versionPanelContent, true);
-            dom.versionGrid.innerHTML = '<div class="col-span-full"><div class="loader mx-auto"></div></div>';
-            
-            const details = await getPokemonDetails(pokemonId);
-            if (!details.allCards) {
-                const tcgResponse = await fetch(`https://api.pokemontcg.io/v2/cards?q=nationalPokedexNumbers:${pokemonId}&orderBy=-set.releaseDate`, { headers: TCG_API_KEY ? { 'X-Api-Key': TCG_API_KEY } : {} });
-                const tcgData = await tcgResponse.json();
-                details.allCards = tcgData.data?.map(card => ({ id: card.id, imageUrl: card.images.small })) || [];
-                state.pokemonDetailsCache.set(pokemonId, details);
-            }
-            
-            dom.versionGrid.innerHTML = '';
-            details.allCards.forEach(card => {
-                const img = document.createElement('img');
-                img.src = card.imageUrl;
-                img.className = "w-full h-auto rounded-md cursor-pointer transition-transform hover:scale-105";
-                img.addEventListener('click', async () => {
-                    const status = state.userCollection[pokemonId] || {};
-                    status.selectedCardId = card.id;
-                    state.userCollection[pokemonId] = status;
+            try {
+                let cardData;
+                // Se o usuário já escolheu uma arte, não precisamos buscar de novo, a menos que o cache esteja vazio.
+                if (userArtUrl && pokemonCache.has(pokemonId)) {
+                     cardData = pokemonCache.get(pokemonId);
+                     cardData.images.small = userArtUrl;
+                } else {
+                    const response = await fetch(`${TCG_API_BASE_URL}?q=name:"${pokemonName.split('-')[0]}" nationalPokedexNumbers:[${pokemonId}]`, {
+                        headers: { 'X-Api-Key': TCG_API_KEY }
+                    });
+                    if (!response.ok) throw new Error('TCG API response not OK');
+                    const result = await response.json();
                     
-                    const oldCardEl = dom.grid.querySelector(`.pokemon-card[data-id="${pokemonId}"]`);
-                    const newCardEl = await createPokemonCard(pokemonId);
-                    if (oldCardEl && newCardEl) oldCardEl.replaceWith(newCardEl);
-                    toggleModal(dom.versionPanel, dom.versionPanelContent, false);
-                });
-                dom.versionGrid.appendChild(img);
-            });
+                    if (result.data.length > 0) {
+                        cardData = result.data[0];
+                        // Se o usuário tem uma arte específica, usa ela. Senão, usa a primeira da API.
+                        if(userArtUrl) cardData.images.small = userArtUrl;
+                        pokemonCache.set(pokemonId, cardData);
+                    } else {
+                        throw new Error('No card found');
+                    }
+                }
+                updateCardUI(cardElement, cardData);
+
+            } catch (error) {
+                // Se falhar, mostra uma imagem padrão
+                imgElement.src = `https://placehold.co/300x420/2d3748/9ca3af?text=${pokemonName}`;
+                imgElement.classList.remove('hidden');
+                placeholder.style.display = 'none';
+                console.warn(`Não foi possível carregar a carta para ${pokemonName}:`, error.message);
+            }
         }
 
-        // --- SETUP DOS EVENT LISTENERS ---
-        function setupEventListeners() {
-            dom.navTabs.addEventListener('click', (e) => {
-                const tab = e.target.closest('.nav-tab');
-                if (tab && state.currentView !== tab.dataset.view) {
-                    dom.navTabs.querySelector('.active-tab')?.classList.remove('active-tab', 'text-accent-color', 'border-accent-color');
-                    tab.classList.add('active-tab', 'text-accent-color', 'border-accent-color');
-                    state.currentView = tab.dataset.view;
-                    state.currentPage = 1;
-                    renderPage();
-                }
-            });
-
-            dom.itemsPerPageSelect.addEventListener('change', (e) => {
-                state.isInfiniteScroll = e.target.value === 'infinite';
-                state.itemsPerPage = state.isInfiniteScroll ? 40 : parseInt(e.target.value);
-                state.currentPage = 1;
-                dom.paginationControls.style.display = state.isInfiniteScroll ? 'none' : 'flex';
-                dom.infiniteScrollSentinel.style.display = state.isInfiniteScroll ? 'block' : 'none';
-                renderPage();
-            });
-
-            dom.grid.addEventListener('click', (e) => {
-                const card = e.target.closest('.pokemon-card');
-                if (!card) return;
-                const pokemonId = card.dataset.id;
-                const actionTarget = e.target.closest('[data-action]');
-                
-                document.querySelectorAll('.pokemon-card.actions-open').forEach(c => c !== card && c.classList.remove('actions-open'));
-                
-                if (actionTarget) {
-                    const action = actionTarget.dataset.action;
-                    if (action === 'toggle-menu') { card.classList.toggle('actions-open'); card.classList.remove('info-open'); return; }
-                    if (action === 'info') { card.classList.toggle('info-open'); card.classList.remove('actions-open'); return; }
-                    if (action === 'switch') { openVersionSelector(pokemonId); return; }
-
-                    const status = state.userCollection[pokemonId] || {};
-                    switch (action) {
-                        case 'captured': status.captured = !status.captured; break;
-                        case 'favorite': status.favorite = !status.favorite; break;
-                        case 'wish': status.wish = !status.wish; break;
-                    }
-                    card.classList.remove('actions-open');
-                    state.userCollection[pokemonId] = status;
-                    updateCardUI(card, status);
-                    if (state.currentView !== 'all') setTimeout(() => renderPage(), 200);
-                }
-            });
+        // 5. Atualizar a UI do card com os dados carregados
+        function updateCardUI(cardElement, cardData) {
+            const imgElement = cardElement.querySelector('.pokemon-image');
+            const placeholder = cardElement.querySelector('.image-placeholder');
             
-            // ... outros listeners
-            dom.closeVersionPanelBtn.addEventListener('click', () => toggleModal(dom.versionPanel, dom.versionPanelContent, false));
+            imgElement.src = cardData.images.small;
+            imgElement.onload = () => {
+                imgElement.classList.remove('hidden');
+                placeholder.style.display = 'none';
+            };
+            imgElement.onerror = () => {
+                imgElement.src = `https://placehold.co/300x420/2d3748/9ca3af?text=Error`;
+                imgElement.classList.remove('hidden');
+                placeholder.style.display = 'none';
+            };
+
+            // Atualiza os filtros de tipo se necessário
+            if (activeFilters.types.size > 0) {
+                const cardTypes = new Set(cardData.types || []);
+                const filterTypes = activeFilters.types;
+                const intersection = new Set([...cardTypes].filter(x => filterTypes.has(x)));
+                if (intersection.size === 0) {
+                    cardElement.style.display = 'none';
+                }
+            }
         }
         
-        const observer = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting && state.isInfiniteScroll && !state.isLoading) {
-                state.currentPage++;
-                renderPage(true); // Append new items
-            }
-        }, { rootMargin: "400px" });
-        observer.observe(dom.infiniteScrollSentinel);
+        // --- EVENT LISTENERS ---
+        function addCardEventListeners(card) {
+            const menuBtn = card.querySelector('.action-menu-btn');
+            const menu = card.querySelector('.action-menu');
+            const img = card.querySelector('.pokemon-image');
+            const pokemonId = parseInt(card.dataset.pokemonId);
 
-        // --- INICIALIZAÇÃO ---
-        initialize();
+            // Menu de Ações
+            menuBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menu.classList.toggle('hidden');
+            });
+            
+            // Ações do Menu
+            menu.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const action = e.target.dataset.action;
+                if(action) handleCardAction(action, card);
+                menu.classList.add('hidden');
+            });
+
+            // Visualizar imagem em tela cheia
+            img.addEventListener('click', () => {
+                const imageViewer = document.getElementById('image-viewer-modal');
+                const fullscreenImage = document.getElementById('fullscreen-image');
+                const cardData = pokemonCache.get(pokemonId);
+                fullscreenImage.src = cardData?.images?.large || img.src;
+                imageViewer.classList.remove('hidden');
+            });
+        }
+        
+        async function handleCardAction(action, card) {
+            const pokemonId = parseInt(card.dataset.pokemonId);
+            const pokemonName = card.dataset.pokemonName;
+            const currentStatus = userCollection[pokemonId]?.status;
+            let newStatus = null;
+
+            card.classList.remove('status-border-favorito', 'status-border-capturado', 'status-border-desejo');
+
+            switch(action) {
+                case 'favorite':
+                    newStatus = currentStatus === 'favorito' ? null : 'favorito';
+                    break;
+                case 'capture':
+                    newStatus = currentStatus === 'capturado' ? null : 'capturado';
+                    break;
+                case 'wish':
+                    newStatus = currentStatus === 'desejo' ? null : 'desejo';
+                    break;
+                case 'info':
+                    toggleInfoOverlay(card);
+                    return; // Não salva no DB
+                case 'switch_version':
+                    openVersionSwitcher(pokemonId, pokemonName);
+                    return; // Não salva no DB
+            }
+
+            if (newStatus) {
+                if (!userCollection[pokemonId]) userCollection[pokemonId] = {};
+                userCollection[pokemonId].status = newStatus;
+                card.classList.add(`status-border-${newStatus}`);
+            } else {
+                if (userCollection[pokemonId]) {
+                    delete userCollection[pokemonId].status;
+                    if(Object.keys(userCollection[pokemonId]).length === 0) {
+                        delete userCollection[pokemonId];
+                    }
+                }
+            }
+            
+            await saveUserCollection();
+            // A UI já foi atualizada, mas se a aba ativa não for 'all', o card pode sumir
+            if(activeTab !== 'all') {
+                renderPokemonGrid();
+            }
+        }
+        
+        async function toggleInfoOverlay(card) {
+            const overlay = card.querySelector('.info-overlay');
+            if (!overlay.classList.contains('hidden')) {
+                overlay.classList.add('hidden');
+                return;
+            }
+
+            const pokemonId = parseInt(card.dataset.pokemonId);
+            const cardData = pokemonCache.get(pokemonId);
+            const pokemonData = masterPokemonList.find(p => p.pokedex_number === pokemonId);
+
+            overlay.innerHTML = '<div class="loader-small" style="width: 20px; height: 20px; border-width: 2px; border-top-color: #facc15; animation: spin 1s linear infinite; border-radius: 50%;"></div>';
+            overlay.classList.remove('hidden');
+
+            const generation = pokemonData.generation;
+            const types = cardData?.types?.join(', ') || 'Desconhecido';
+            
+            setTimeout(() => { // Pequeno delay para UX
+                overlay.innerHTML = `
+                    <p><span class="font-bold text-yellow-400">Geração:</span> ${generation}</p>
+                    <p><span class="font-bold text-yellow-400">Tipos:</span> ${types}</p>
+                `;
+            }, 300);
+            
+            // Esconde o overlay após alguns segundos
+            setTimeout(() => overlay.classList.add('hidden'), 4000);
+        }
+
+        async function openVersionSwitcher(pokemonId, pokemonName) {
+            const panel = document.getElementById('version-switcher-panel');
+            const grid = document.getElementById('version-grid');
+            grid.innerHTML = '<div class="col-span-full flex justify-center"><div class="loader"></div></div>';
+            panel.classList.remove('hidden');
+
+            try {
+                const response = await fetch(`${TCG_API_BASE_URL}?q=name:"${pokemonName.split('-')[0]}" nationalPokedexNumbers:[${pokemonId}]`, {
+                    headers: { 'X-Api-Key': TCG_API_KEY }
+                });
+                if (!response.ok) throw new Error('TCG API response not OK');
+                const result = await response.json();
+
+                grid.innerHTML = '';
+                if (result.data.length > 0) {
+                    result.data.forEach(cardVersion => {
+                        const versionCard = document.createElement('img');
+                        versionCard.src = cardVersion.images.small;
+                        versionCard.alt = cardVersion.name;
+                        versionCard.className = 'w-full h-auto rounded-md cursor-pointer hover:scale-105 hover:shadow-lg transition-transform';
+                        versionCard.onclick = async () => {
+                            // Atualiza a arte no DB
+                            if (!userCollection[pokemonId]) userCollection[pokemonId] = {};
+                            userCollection[pokemonId].artUrl = cardVersion.images.small;
+                            await saveUserCollection();
+                            
+                            // Atualiza a UI
+                            const mainCard = document.querySelector(`.card-container[data-pokemon-id='${pokemonId}']`);
+                            if (mainCard) {
+                                const mainImg = mainCard.querySelector('.pokemon-image');
+                                mainImg.src = cardVersion.images.small;
+                            }
+                            panel.classList.add('hidden');
+                        };
+                        grid.appendChild(versionCard);
+                    });
+                } else {
+                    grid.innerHTML = '<p class="col-span-full text-center">Nenhuma outra versão encontrada.</p>';
+                }
+            } catch (error) {
+                grid.innerHTML = '<p class="col-span-full text-center text-red-400">Erro ao buscar versões.</p>';
+            }
+        }
+
+        // --- INICIALIZAÇÃO DA UI E EVENTOS GLOBAIS ---
+        function initializeUI() {
+            // Abas de navegação
+            tabs.addEventListener('click', (e) => {
+                if (e.target.classList.contains('tab-btn')) {
+                    document.querySelectorAll('.tab-btn').forEach(btn => {
+                        btn.classList.remove('text-yellow-400', 'border-yellow-400');
+                    });
+                    e.target.classList.add('text-yellow-400', 'border-yellow-400');
+                    activeTab = e.target.dataset.tab;
+                    renderPokemonGrid();
+                }
+            });
+            document.querySelector('.tab-btn[data-tab="all"]').click();
+
+            // Busca
+            searchInput.addEventListener('input', () => {
+                // Debounce para evitar renderizações excessivas
+                clearTimeout(searchInput.timer);
+                searchInput.timer = setTimeout(renderPokemonGrid, 300);
+            });
+
+            // Ordenação
+            sortSelect.addEventListener('change', () => {
+                activeSort = sortSelect.value;
+                renderPokemonGrid();
+            });
+
+            // Filtros
+            initializeFilterModal();
+            filterBtn.addEventListener('click', () => filterModal.classList.remove('hidden'));
+            filterModal.addEventListener('click', (e) => {
+                if (e.target === filterModal) filterModal.classList.add('hidden');
+            });
+            applyFiltersBtn.addEventListener('click', () => {
+                filterModal.classList.add('hidden');
+                renderPokemonGrid();
+            });
+            resetFiltersBtn.addEventListener('click', () => {
+                activeFilters.generations.clear();
+                activeFilters.types.clear();
+                document.querySelectorAll('#generation-filters button, #type-filters button').forEach(b => b.classList.remove('bg-yellow-400', 'text-gray-900'));
+                filterModal.classList.add('hidden');
+                renderPokemonGrid();
+            });
+
+            // Botão Voltar ao Topo
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 300) {
+                    backToTopBtn.classList.remove('hidden');
+                } else {
+                    backToTopBtn.classList.add('hidden');
+                }
+            });
+            backToTopBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+
+            // Fechar painel de versões
+            document.getElementById('close-version-switcher').addEventListener('click', () => {
+                document.getElementById('version-switcher-panel').classList.add('hidden');
+            });
+        }
+        
+        function initializeFilterModal() {
+            // Gerações
+            Object.keys(GENERATIONS).forEach(gen => {
+                const btn = document.createElement('button');
+                btn.className = 'filter-option-btn p-2 border border-gray-600 rounded-md text-sm hover:border-yellow-400';
+                btn.textContent = `Gen ${gen}`;
+                btn.dataset.filterType = 'generations';
+                btn.dataset.value = gen;
+                generationFiltersContainer.appendChild(btn);
+            });
+            // Tipos
+            TYPES.forEach(type => {
+                const btn = document.createElement('button');
+                btn.className = 'filter-option-btn p-2 border border-gray-600 rounded-md text-sm hover:border-yellow-400';
+                btn.textContent = type;
+                btn.dataset.filterType = 'types';
+                btn.dataset.value = type;
+                typeFiltersContainer.appendChild(btn);
+            });
+
+            // Event listener para todos os botões de filtro
+            filterModal.addEventListener('click', (e) => {
+                if (e.target.classList.contains('filter-option-btn')) {
+                    const btn = e.target;
+                    const filterType = btn.dataset.filterType;
+                    const value = btn.dataset.filterType === 'generations' ? parseInt(btn.dataset.value) : btn.dataset.value;
+
+                    if (activeFilters[filterType].has(value)) {
+                        activeFilters[filterType].delete(value);
+                        btn.classList.remove('bg-yellow-400', 'text-gray-900');
+                    } else {
+                        activeFilters[filterType].add(value);
+                        btn.classList.add('bg-yellow-400', 'text-gray-900');
+                    }
+                }
+            });
+        }
+
+        // --- INICIAR APLICAÇÃO ---
+        document.addEventListener('DOMContentLoaded', fetchMasterList);
+
     </script>
 </body>
 </html>
-
