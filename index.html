@@ -159,8 +159,6 @@
         // --- CONFIGURAÇÃO ---
         const POKEAPI_BASE_URL = 'https://pokeapi.co/api/v2';
         const TCG_API_BASE_URL = 'https://api.pokemontcg.io/v2/cards';
-        // NOTA: A API do TCG pode requerer uma chave de API para uso em produção.
-        // Para este exemplo, usamos o acesso público.
         const TCG_API_KEY = ''; // Adicione sua chave aqui se necessário
 
         const GENERATIONS = {
@@ -213,7 +211,6 @@
         } catch (error) {
             console.error("Erro ao inicializar o Firebase:", error);
             loadingIndicator.innerHTML = '<p class="text-red-400">Erro de configuração. Não foi possível conectar ao banco de dados.</p>';
-            // CORREÇÃO: Removido 'return' ilegal do escopo global.
         }
 
         // --- AUTENTICAÇÃO E DADOS DO USUÁRIO ---
@@ -250,7 +247,6 @@
                 } else {
                     userCollection = {};
                 }
-                // Re-renderiza a lista para refletir os dados atualizados
                 if(masterPokemonList.length > 0) {
                     renderPokemonGrid();
                 }
@@ -270,12 +266,9 @@
         }
         
         // --- LÓGICA PRINCIPAL ---
-
-        // 1. Carregar a lista mestra de Pokémon da PokeAPI
         async function fetchMasterList() {
             loadingIndicator.style.display = 'flex';
             try {
-                // Usamos uma espécie para obter a lista completa, incluindo variações.
                 const response = await fetch(`${POKEAPI_BASE_URL}/pokemon-species?limit=1010`);
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
@@ -286,12 +279,10 @@
                     return {
                         name: pokemon.name,
                         pokedex_number: id,
-                        // Adicionamos a geração aqui para facilitar a filtragem
                         generation: getGenerationFromId(id)
                     };
                 });
                 
-                // Inicializa a UI
                 initializeUI();
                 renderPokemonGrid();
 
@@ -313,16 +304,10 @@
             return null;
         }
 
-        // 2. Renderizar a grade de Pokémon
         function renderPokemonGrid() {
             grid.innerHTML = '';
-            
-            // A. Filtrar
             let filteredList = filterPokemonList();
-
-            // B. Ordenar
             sortPokemonList(filteredList);
-            
             currentPokemonList = filteredList;
 
             if(currentPokemonList.length === 0) {
@@ -330,25 +315,21 @@
                 return;
             }
             
-            // C. Criar e adicionar cards
             currentPokemonList.forEach(pokemon => {
                 const card = createPokemonCardElement(pokemon);
                 grid.appendChild(card);
             });
         }
 
-        // Função para filtrar a lista de Pokémon com base na aba ativa, busca e filtros
         function filterPokemonList() {
             const searchTerm = searchInput.value.toLowerCase().trim();
 
             return masterPokemonList.filter(pokemon => {
-                // Filtro por busca (nome ou número)
                 const matchesSearch = searchTerm === '' ||
                     pokemon.name.toLowerCase().includes(searchTerm) ||
                     pokemon.pokedex_number.toString().includes(searchTerm);
                 if (!matchesSearch) return false;
 
-                // Filtro por aba de coleção
                 const status = userCollection[pokemon.pokedex_number]?.status;
                 const matchesTab = activeTab === 'all' ||
                     (activeTab === 'favorites' && status === 'favorito') ||
@@ -356,15 +337,13 @@
                     (activeTab === 'wishlist' && status === 'desejo');
                 if (!matchesTab) return false;
 
-                // Filtro por Geração
                 if (activeFilters.generations.size > 0 && !activeFilters.generations.has(pokemon.generation)) {
                     return false;
                 }
 
-                // Filtro por Tipo (requer dados da carta, então verificamos o cache)
                 if (activeFilters.types.size > 0) {
                     const cachedCard = pokemonCache.get(pokemon.pokedex_number);
-                    if (!cachedCard || !cachedCard.types) return true; // Se não carregado, assume que pode corresponder
+                    if (!cachedCard || !cachedCard.types) return true;
                     const cardTypes = new Set(cachedCard.types.map(t => t));
                     const filterTypes = new Set(activeFilters.types);
                     const intersection = new Set([...cardTypes].filter(x => filterTypes.has(x)));
@@ -375,18 +354,15 @@
             });
         }
 
-        // Função para ordenar a lista
         function sortPokemonList(list) {
             list.sort((a, b) => {
                 if (activeSort === 'alphabetical') {
                     return a.name.localeCompare(b.name);
                 }
-                // Padrão é por número da Pokédex
                 return a.pokedex_number - b.pokedex_number;
             });
         }
 
-        // 3. Criar o elemento do card (com placeholder)
         function createPokemonCardElement(pokemon) {
             const card = document.createElement('div');
             card.className = 'card-container bg-gray-800 rounded-lg shadow-md overflow-hidden transform hover:-translate-y-1 transition-all duration-300 relative border-2 border-transparent';
@@ -398,13 +374,11 @@
                 card.classList.add(`status-border-${status}`);
             }
 
-            const artUrl = userCollection[pokemon.pokedex_number]?.artUrl;
-
             card.innerHTML = `
                 <div class="w-full h-48 bg-gray-700 flex items-center justify-center image-placeholder">
                     <div class="loader-small" style="width: 30px; height: 30px; border-width: 3px; border-top-color: #facc15; animation: spin 1s linear infinite; border-radius: 50%;"></div>
                 </div>
-                <img data-src="${artUrl || 'default'}" class="pokemon-image w-full h-48 object-cover hidden" alt="${pokemon.name}" loading="lazy">
+                <img class="pokemon-image w-full h-48 object-cover hidden" alt="${pokemon.name}" loading="lazy">
                 <div class="p-3">
                     <h3 class="font-bold text-md truncate">${pokemon.name.charAt(0).toUpperCase() + pokemon.name.slice(1)}</h3>
                     <p class="text-sm text-gray-400">#${pokemon.pokedex_number.toString().padStart(3, '0')}</p>
@@ -422,7 +396,6 @@
                 <div class="info-overlay hidden absolute inset-0 bg-black/70 p-3 flex flex-col justify-center items-center text-center"></div>
             `;
             
-            // Adiciona IntersectionObserver para lazy loading
             const observer = new IntersectionObserver((entries, obs) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
@@ -433,21 +406,15 @@
             }, { rootMargin: '200px' });
 
             observer.observe(card);
-            
             addCardEventListeners(card);
-
             return card;
         }
 
-        // 4. Carregar detalhes da carta (Lazy Loading)
         async function loadCardDetails(cardElement) {
             const pokemonId = parseInt(cardElement.dataset.pokemonId);
             const pokemonName = cardElement.dataset.pokemonName;
-            const imgElement = cardElement.querySelector('.pokemon-image');
-            const placeholder = cardElement.querySelector('.image-placeholder');
             const userArtUrl = userCollection[pokemonId]?.artUrl;
 
-            // Se já estiver no cache, usa os dados
             if (pokemonCache.has(pokemonId) && !userArtUrl) {
                 updateCardUI(cardElement, pokemonCache.get(pokemonId));
                 return;
@@ -455,38 +422,37 @@
 
             try {
                 let cardData;
-                // Se o usuário já escolheu uma arte, não precisamos buscar de novo, a menos que o cache esteja vazio.
                 if (userArtUrl && pokemonCache.has(pokemonId)) {
                      cardData = pokemonCache.get(pokemonId);
                      cardData.images.small = userArtUrl;
                 } else {
-                    const response = await fetch(`${TCG_API_BASE_URL}?q=name:"${pokemonName.split('-')[0]}" nationalPokedexNumbers:[${pokemonId}]`, {
+                    // *** CORREÇÃO: Simplificada a query da API para ser mais confiável ***
+                    const response = await fetch(`${TCG_API_BASE_URL}?q=nationalPokedexNumbers:${pokemonId}`, {
                         headers: { 'X-Api-Key': TCG_API_KEY }
                     });
                     if (!response.ok) throw new Error('TCG API response not OK');
                     const result = await response.json();
                     
-                    if (result.data.length > 0) {
+                    if (result.data && result.data.length > 0) {
                         cardData = result.data[0];
-                        // Se o usuário tem uma arte específica, usa ela. Senão, usa a primeira da API.
                         if(userArtUrl) cardData.images.small = userArtUrl;
                         pokemonCache.set(pokemonId, cardData);
                     } else {
-                        throw new Error('No card found');
+                        throw new Error('No card found for this Pokédex number');
                     }
                 }
                 updateCardUI(cardElement, cardData);
 
             } catch (error) {
-                // Se falhar, mostra uma imagem padrão
+                const imgElement = cardElement.querySelector('.pokemon-image');
+                const placeholder = cardElement.querySelector('.image-placeholder');
                 imgElement.src = `https://placehold.co/300x420/2d3748/9ca3af?text=${pokemonName}`;
                 imgElement.classList.remove('hidden');
                 placeholder.style.display = 'none';
-                console.warn(`Não foi possível carregar a carta para ${pokemonName}:`, error.message);
+                console.warn(`Não foi possível carregar a carta para ${pokemonName} (ID: ${pokemonId}):`, error.message);
             }
         }
 
-        // 5. Atualizar a UI do card com os dados carregados
         function updateCardUI(cardElement, cardData) {
             const imgElement = cardElement.querySelector('.pokemon-image');
             const placeholder = cardElement.querySelector('.image-placeholder');
@@ -502,7 +468,6 @@
                 placeholder.style.display = 'none';
             };
 
-            // Atualiza os filtros de tipo se necessário
             if (activeFilters.types.size > 0) {
                 const cardTypes = new Set(cardData.types || []);
                 const filterTypes = activeFilters.types;
@@ -513,20 +478,20 @@
             }
         }
         
-        // --- EVENT LISTENERS ---
         function addCardEventListeners(card) {
             const menuBtn = card.querySelector('.action-menu-btn');
             const menu = card.querySelector('.action-menu');
             const img = card.querySelector('.pokemon-image');
             const pokemonId = parseInt(card.dataset.pokemonId);
 
-            // Menu de Ações
             menuBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
+                document.querySelectorAll('.action-menu').forEach(m => {
+                    if (m !== menu) m.classList.add('hidden');
+                });
                 menu.classList.toggle('hidden');
             });
             
-            // Ações do Menu
             menu.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -535,7 +500,6 @@
                 menu.classList.add('hidden');
             });
 
-            // Visualizar imagem em tela cheia
             img.addEventListener('click', () => {
                 const imageViewer = document.getElementById('image-viewer-modal');
                 const fullscreenImage = document.getElementById('fullscreen-image');
@@ -554,21 +518,11 @@
             card.classList.remove('status-border-favorito', 'status-border-capturado', 'status-border-desejo');
 
             switch(action) {
-                case 'favorite':
-                    newStatus = currentStatus === 'favorito' ? null : 'favorito';
-                    break;
-                case 'capture':
-                    newStatus = currentStatus === 'capturado' ? null : 'capturado';
-                    break;
-                case 'wish':
-                    newStatus = currentStatus === 'desejo' ? null : 'desejo';
-                    break;
-                case 'info':
-                    toggleInfoOverlay(card);
-                    return; // Não salva no DB
-                case 'switch_version':
-                    openVersionSwitcher(pokemonId, pokemonName);
-                    return; // Não salva no DB
+                case 'favorite': newStatus = currentStatus === 'favorito' ? null : 'favorito'; break;
+                case 'capture': newStatus = currentStatus === 'capturado' ? null : 'capturado'; break;
+                case 'wish': newStatus = currentStatus === 'desejo' ? null : 'desejo'; break;
+                case 'info': toggleInfoOverlay(card); return;
+                case 'switch_version': openVersionSwitcher(pokemonId, pokemonName); return;
             }
 
             if (newStatus) {
@@ -585,7 +539,6 @@
             }
             
             await saveUserCollection();
-            // A UI já foi atualizada, mas se a aba ativa não for 'all', o card pode sumir
             if(activeTab !== 'all') {
                 renderPokemonGrid();
             }
@@ -606,16 +559,13 @@
             overlay.classList.remove('hidden');
 
             const generation = pokemonData.generation;
-            const types = cardData?.types?.join(', ') || 'Desconhecido';
+            const types = cardData?.types?.join(', ') || 'Carregando...';
             
-            setTimeout(() => { // Pequeno delay para UX
-                overlay.innerHTML = `
-                    <p><span class="font-bold text-yellow-400">Geração:</span> ${generation}</p>
-                    <p><span class="font-bold text-yellow-400">Tipos:</span> ${types}</p>
-                `;
-            }, 300);
+            overlay.innerHTML = `
+                <p><span class="font-bold text-yellow-400">Geração:</span> ${generation}</p>
+                <p><span class="font-bold text-yellow-400">Tipos:</span> ${types}</p>
+            `;
             
-            // Esconde o overlay após alguns segundos
             setTimeout(() => overlay.classList.add('hidden'), 4000);
         }
 
@@ -626,26 +576,24 @@
             panel.classList.remove('hidden');
 
             try {
-                const response = await fetch(`${TCG_API_BASE_URL}?q=name:"${pokemonName.split('-')[0]}" nationalPokedexNumbers:[${pokemonId}]`, {
+                const response = await fetch(`${TCG_API_BASE_URL}?q=nationalPokedexNumbers:${pokemonId}`, {
                     headers: { 'X-Api-Key': TCG_API_KEY }
                 });
                 if (!response.ok) throw new Error('TCG API response not OK');
                 const result = await response.json();
 
                 grid.innerHTML = '';
-                if (result.data.length > 0) {
+                if (result.data && result.data.length > 0) {
                     result.data.forEach(cardVersion => {
                         const versionCard = document.createElement('img');
                         versionCard.src = cardVersion.images.small;
                         versionCard.alt = cardVersion.name;
                         versionCard.className = 'w-full h-auto rounded-md cursor-pointer hover:scale-105 hover:shadow-lg transition-transform';
                         versionCard.onclick = async () => {
-                            // Atualiza a arte no DB
                             if (!userCollection[pokemonId]) userCollection[pokemonId] = {};
                             userCollection[pokemonId].artUrl = cardVersion.images.small;
                             await saveUserCollection();
                             
-                            // Atualiza a UI
                             const mainCard = document.querySelector(`.card-container[data-pokemon-id='${pokemonId}']`);
                             if (mainCard) {
                                 const mainImg = mainCard.querySelector('.pokemon-image');
@@ -663,9 +611,7 @@
             }
         }
 
-        // --- INICIALIZAÇÃO DA UI E EVENTOS GLOBAIS ---
         function initializeUI() {
-            // Abas de navegação
             tabs.addEventListener('click', (e) => {
                 if (e.target.classList.contains('tab-btn')) {
                     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -678,20 +624,16 @@
             });
             document.querySelector('.tab-btn[data-tab="all"]').click();
 
-            // Busca
             searchInput.addEventListener('input', () => {
-                // Debounce para evitar renderizações excessivas
                 clearTimeout(searchInput.timer);
                 searchInput.timer = setTimeout(renderPokemonGrid, 300);
             });
 
-            // Ordenação
             sortSelect.addEventListener('change', () => {
                 activeSort = sortSelect.value;
                 renderPokemonGrid();
             });
 
-            // Filtros
             initializeFilterModal();
             filterBtn.addEventListener('click', () => filterModal.classList.remove('hidden'));
             filterModal.addEventListener('click', (e) => {
@@ -709,7 +651,6 @@
                 renderPokemonGrid();
             });
 
-            // Botão Voltar ao Topo
             window.addEventListener('scroll', () => {
                 if (window.scrollY > 300) {
                     backToTopBtn.classList.remove('hidden');
@@ -719,33 +660,33 @@
             });
             backToTopBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
 
-            // Fechar painel de versões
             document.getElementById('close-version-switcher').addEventListener('click', () => {
                 document.getElementById('version-switcher-panel').classList.add('hidden');
+            });
+            
+            document.body.addEventListener('click', () => {
+                 document.querySelectorAll('.action-menu').forEach(m => m.classList.add('hidden'));
             });
         }
         
         function initializeFilterModal() {
-            // Gerações
             Object.keys(GENERATIONS).forEach(gen => {
                 const btn = document.createElement('button');
-                btn.className = 'filter-option-btn p-2 border border-gray-600 rounded-md text-sm hover:border-yellow-400';
+                btn.className = 'filter-option-btn p-2 border border-gray-600 rounded-md text-sm hover:border-yellow-400 transition-colors';
                 btn.textContent = `Gen ${gen}`;
                 btn.dataset.filterType = 'generations';
                 btn.dataset.value = gen;
                 generationFiltersContainer.appendChild(btn);
             });
-            // Tipos
             TYPES.forEach(type => {
                 const btn = document.createElement('button');
-                btn.className = 'filter-option-btn p-2 border border-gray-600 rounded-md text-sm hover:border-yellow-400';
+                btn.className = 'filter-option-btn p-2 border border-gray-600 rounded-md text-sm hover:border-yellow-400 transition-colors';
                 btn.textContent = type;
                 btn.dataset.filterType = 'types';
                 btn.dataset.value = type;
                 typeFiltersContainer.appendChild(btn);
             });
 
-            // Event listener para todos os botões de filtro
             filterModal.addEventListener('click', (e) => {
                 if (e.target.classList.contains('filter-option-btn')) {
                     const btn = e.target;
@@ -763,7 +704,6 @@
             });
         }
 
-        // --- INICIAR APLICAÇÃO ---
         document.addEventListener('DOMContentLoaded', fetchMasterList);
 
     </script>
